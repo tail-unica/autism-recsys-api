@@ -1,0 +1,9 @@
+# Saved models
+/saved*
+*.pth
+
+.vscode/
+.idea/
+*.pyc
+*.log
+*venv/
