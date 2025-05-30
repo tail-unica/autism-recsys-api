@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from src.api.routes.schema import RecommendationRequest
+from src.app.schema import RecommendationItem, RecommendationRequest, RecommendationResponse
 from src.core.main import food_recommender
 
 router = APIRouter()
@@ -30,7 +30,7 @@ async def get_recommendation(request: RecommendationRequest):
 
     **conversation_id**: Identifier for the conversation these recommendations are associated with
     """
-    recommendations, scores = food_recommender(
+    recommender_output = food_recommender(
         request.user_id,
         preferences=request.preferences,
         soft_restrictions=request.soft_restrictions,
@@ -41,9 +41,29 @@ async def get_recommendation(request: RecommendationRequest):
         diversity_factor=request.diversity_factor,
     )
 
-    return {
-        "user_id": request.user_id,
-        "recommendations": recommendations,
-        "scores": scores,
-        "conversation_id": request.conversation_id,
-    }
+    response = RecommendationResponse(
+        user_id=request.user_id,
+        recommendations=[
+            RecommendationItem(
+                name=rec,
+                score=score,
+                explanation=exp,
+                ingredients=ingredients,
+                healthiness_score=health_score,
+                sustainability_score=sustain_score,
+                nutritional_values=nutri_values,
+            )
+            for rec, score, exp, ingredients, health_score, sustain_score, nutri_values in zip(
+                recommender_output["recommendations"],
+                recommender_output["scores"],
+                recommender_output["explanations"],
+                recommender_output["ingredients"],
+                recommender_output["healthiness_scores"],
+                recommender_output["sustainability_scores"],
+                recommender_output["nutritional_values"],
+            )
+        ],
+        conversation_id=request.conversation_id,
+    )
+
+    return response
