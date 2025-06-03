@@ -1,12 +1,17 @@
 from fastapi import APIRouter
 
-from src.app.schema import RecommendationItem, RecommendationRequest, RecommendationResponse
-from src.core.main import food_recommender
+from src.app.schema import (
+    AlternativeResponse,
+    RecommendationItem,
+    RecommendationRequest,
+    RecommendationResponse,
+)
+from src.core.main import food_alternative_recommender, food_info_fetcher, food_recommender
 
 router = APIRouter()
 
 
-@router.post("/recommend")
+@router.post("/recommend", response_model=RecommendationResponse)
 async def get_recommendation(request: RecommendationRequest):
     """Food recommendation endpoint.
 
@@ -67,3 +72,20 @@ async def get_recommendation(request: RecommendationRequest):
     )
 
     return response
+
+
+@router.post("/alternative", response_model=AlternativeResponse)
+def get_alternative_recommendation(food_item: str):
+    """Alternative food (recipe or ingredient) recommendation endpoint. Information about food item is retrieved
+    to find alternatives that meet healthiness and sustainability criteria.
+
+    **food_item**: Name of the food item (recipe or ingredient) to get alternative recommendations for
+    """
+
+    info_response = food_info_fetcher(food_item)
+
+    alternatives = food_alternative_recommender(**info_response)
+
+    alternative_response = AlternativeResponse(food_item=food_item, alternatives=alternatives)
+
+    return alternative_response

@@ -3,6 +3,20 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 
+class IngredientList(BaseModel):
+    """Model for a list of ingredients"""
+
+    ingredients: list[str] = Field(
+        description="List of ingredients",
+        example=["pasta", "eggs", "cheese pecorino", "black pepper"],
+    )
+    quantities: Optional[list[str]] = Field(
+        default=None,
+        description="Optional list of quantities for each ingredient",
+        example=["100g", "2", "50g", "to taste"],
+    )
+
+
 class RecommendationRequest(BaseModel):
     user_id: int = Field(description="Unique identifier for the user", example=12345)
     preferences: list[str] = Field(
@@ -96,8 +110,21 @@ class InfoResponse(BaseModel):
         description="Nutritional information for this food item",
         example={"calories": 450.0, "protein": 12.0, "carbs": 56.0, "fat": 18.0},
     )
-    ingredients: Optional[list[tuple[str, str]]] = Field(
+    ingredients: Optional[IngredientList] = Field(
         default=None,
-        description="List of main ingredients in this food item if it is a recipe",
-        example=[("pasta", "100g"), ("eggs", "2"), ("cheese pecorino", "50g"), ("black pepper", "to taste")],
+        description="List of ingredients and their quantities for this food item",
+        example=IngredientList(
+            ingredients=["pasta", "eggs", "cheese pecorino", "black pepper"],
+            quantities=["100g", "2", "50g", "to taste"],
+        ),
+    )
+
+
+class AlternativeResponse(BaseModel):
+    """Response model for alternative food recommendations"""
+
+    food_item: str = Field(description="Name of the original food item", example="Spaghetti Carbonara")
+    alternatives: list[str] = Field(
+        description="List of alternative food items (recipes or ingredients) that meet the required scores",
+        example=["Pasta alla Gricia", "Fettuccine Alfredo", "Penne with Basil Pesto"],
     )

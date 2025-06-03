@@ -64,6 +64,21 @@ curl -X POST http://localhost:8100/recommend \
   }'
 ```
 
+### Get Info about Food Item
+```bash
+curl -X GET http://localhost:8100/food-info/onion \
+  -H "Content-Type: application/json"
+```
+
+### Get Alternative Food Items
+```bash
+curl -X POST http://localhost:8100/alternative \
+  -H "Content-Type: application/json" \
+  -d '{
+    "food_item": "salmon"
+  }'
+```
+
 ## Local Development (without Docker)
 
 Requires [uv](https://docs.astral.sh/uv/getting-started/installation/)

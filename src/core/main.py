@@ -56,3 +56,51 @@ def food_recommender(  # noqa: PLR0913
     )
 
     return output
+
+
+# Dummy function representing the food info fetcher
+def food_info_fetcher(food_item: str) -> dict:
+    """Dummy food info fetcher.
+
+    Args:
+        food_item (str): Name of the food item to get information about.
+    """
+    return {
+        "food_item": food_item,
+        "healthiness_score": 0.8,
+        "sustainability_score": 0.7,
+        "nutritional_values": {
+            "calories": 100,
+            "protein": 5,
+            "carbohydrates": 20,
+            "fats": 2,
+        },
+        "ingredients": [("ingredient1", "100g"), ("ingredient2", "50g")],
+    }
+
+
+# Dummy function representing the food alternative recommender
+def food_alternative_recommender(
+    food_item: str,
+    healthiness_score: float,
+    sustainability_score: float,
+    nutritional_values: dict[str, float],
+    ingredients: list[tuple[str, str]] = None,
+) -> list[str]:
+    """Dummy food alternative recommender.
+
+    Args:
+        food_item (str): Name of the food item to find alternatives for.
+        healthiness_score (float): Healthiness score of the original food item.
+        sustainability_score (float): Sustainability score of the original food item.
+        nutritional_values (dict[str, float]): Nutritional values of the original food item.
+        ingredients (list[tuple[str, str]], optional): List of ingredients in the original food item. Defaults to None.
+
+    Returns:
+        list[str]: List of alternative food items (recipes or ingredients) that meet the required scores.
+    """
+    return [
+        "Pasta alla gricia",
+        "Fettuccine Alfredo",
+        "Penne with basil pesto",
+    ]

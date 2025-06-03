@@ -74,6 +74,12 @@ async def root():
         <div class="endpoint">
             <a href="/recommend">POST /recommend</a> - Get personalized food recommendations
         </div>
+        <div class="endpoint">
+            <a href="/food-info">GET /food-info</a> - Get information about a specific food item or recipe
+        </div>
+        <div class="endpoint">
+            <a href="/alternative">POST /alternative</a> - Get healtier and more sustainable food alternatives
+        </div>
 
         <p>See the API documentation for details on request and response formats.</p>
     </body>
@@ -87,4 +93,20 @@ async def redirect_to_docs():
     """
     Redirects GET requests to /recommend to the API documentation.
     """
-    return "/docs#/default/get_recommendation_recommend_post"
+    return "/docs#/recommendation/get_recommendation_recommend_post"
+
+
+@app.get("/food-info", response_class=RedirectResponse, status_code=307)
+async def redirect_to_food_info():
+    """
+    Redirects GET requests to /food-info to the API documentation.
+    """
+    return "/docs#/info/get_food_info_food_item_get"
+
+
+@app.get("/alternative", response_class=RedirectResponse, status_code=307)
+async def redirect_to_alternative():
+    """
+    Redirects GET requests to /alternative to the API documentation.
+    """
+    return "/docs#/recommendation/get_alternative_recommendation_recommendation_alternative_post"
