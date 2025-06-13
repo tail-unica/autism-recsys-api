@@ -88,10 +88,38 @@ async def get_recommendation(request: RecommendationRequest):
     return response
 
 
+"""
+    healthiness = healthiness - healthiness_reference
+    sustainability = sustainability - sustainability_reference
+    # Negative scores indicate better healthiness and sustainability trade-off
+    if healthiness + sustainability > 0:
+        return None
+    healthiness, sustainability = abs(healthiness), abs(sustainability)
+
+    return (similarity * similarity_weight + healthiness + sustainability) / 3.0
+"""
+
+
 @router.post("/alternative", response_model=AlternativeResponse)
 def get_alternative(food_item: str, num_alternatives: int = 5):
     """Alternative food (recipe or ingredient) endpoint. Information about food item is retrieved
     to find alternatives that meet healthiness and sustainability criteria.
+
+    Alternatives are retrieved based on similarity to the provided food item, and finally filtered
+    to ensure they meet better healthiness and sustainability criteria.
+    Specifically, this filtering is performed according to the following procedure:
+    1. Retrieve alternatives based on similarity to the provided food item.
+    2. For each alternative, retrieve its healthiness and sustainability categorical scores if available.
+    3. Map the categorical scores to numerical values, e.g., 'A' -> 1.0, 'B' -> 2.0, etc.
+    4. Calculate the score difference between the alternative and the provided food item.
+        a. healthiness = healthiness_{alternative} - healthiness_{provided_food_item}
+        b. sustainability = sustainability_{alternative} - sustainability_{provided_food_item}
+    5. If the sum of healthiness and sustainability is positive, discard the alternative.
+    6. Calculate an overall score accounting also for similarity to the provided food item
+        > (similarity * similarity_weight + healthiness + sustainability) / 3.0
+        where similarity_weight is a hyperparameter that can be tuned in config.
+    7. Sort the alternatives by this score in ascending order (lower is better).
+    If no alternatives meet the criteria, a 404 error is raised.
 
     **food_item**: Name of the food item (recipe or ingredient) to get alternatives for
     **num_alternatives**: Number of alternatives to return (default is 5)

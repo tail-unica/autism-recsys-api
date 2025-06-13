@@ -11,6 +11,10 @@ router = APIRouter()
 async def get_info(food_item: str):
     """Food information endpoint.
 
+    Multiple food items can have the same name, so this endpoint returns the first match.
+    The same name could refer to either a recipe or an ingredient, and without additional context about
+    the queried food item, the endpoint cannot distinguish between them.
+
     **food_item**: Name of the food item (recipe or ingredient) to get information about
     """
     if hasattr(core, "food_info_fetcher"):
