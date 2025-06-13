@@ -1,0 +1,34 @@
+data:
+  data_dir: "data"
+  parquet_file: "phase_recipes.parquet"
+
+core:
+  healthiness_metric: "nutri_group"
+  score_map:
+    A: Excellent
+    B: Good
+    C: Fair
+    D: Poor
+    E: Inadequate
+  alternative_distance_weight: 0.8
+
+semantic_search:
+  model_name: "all-MiniLM-L6-v2"
+  embedding_dim: ~  # ~ indicates automatic detection
+  max_distance_threshold: 1.0  # with FAISS complex to set a robust threshold
+  # Use a threshold of 1.0 to allow all results, leaving FAISS retrieve items at any cosine distance
+  use_hierarchical: true
+  n_clusters: 50
+  force_recompute: false
+  batch_size: 40960
+  cache_dir: "embeddings_cache"
+
+api:
+  host: "0.0.0.0"
+  port: 8100
+  title: "PhaseAPI - Food Recommendation System"
+  description: "Food recommendation API service"
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

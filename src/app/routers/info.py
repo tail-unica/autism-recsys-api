@@ -1,8 +1,9 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
-from src.app.schema import InfoResponse, IngredientList
-from src.core.main import food_info_fetcher
+import src.core.main as core
+from src.app.schema import InfoResponse
 
+logger = core.logger
 router = APIRouter()
 
 
@@ -12,21 +13,18 @@ async def get_info(food_item: str):
 
     **food_item**: Name of the food item (recipe or ingredient) to get information about
     """
+    if hasattr(core, "food_info_fetcher"):
+        food_info_fetcher = core.food_info_fetcher
+    else:
+        logger.warning(
+            "Using dummy food info fetcher. "
+            "Please ensure the core module is properly configured with a food info fetcher."
+        )
+        food_info_fetcher = core.dummy_food_info_fetcher
+
     info_response = food_info_fetcher(food_item)
 
-    # [("ingredient", "quantity"), ...] -> (["ingredient1", "ingredient2", ...], ["quantity1", "quantity2", ...])
-    if info_response.get("ingredients") is not None:
-        ingredients, quantities = zip(*info_response["ingredients"])
-        ingredients, quantities = list(ingredients), list(quantities)
-    else:
-        ingredients, quantities = [], []
+    if info_response is None:
+        raise HTTPException(status_code=404, detail=f"Food item '{food_item}' not found in database")
 
-    response = InfoResponse(
-        food_item=info_response["food_item"],
-        healthiness_score=info_response["healthiness_score"],
-        sustainability_score=info_response["sustainability_score"],
-        nutritional_values=info_response["nutritional_values"],
-        ingredients=IngredientList(ingredients=ingredients, quantities=quantities),
-    )
-
-    return response
+    return InfoResponse(**info_response)

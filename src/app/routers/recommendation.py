@@ -1,13 +1,14 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
+import src.core.main as core
 from src.app.schema import (
     AlternativeResponse,
     RecommendationItem,
     RecommendationRequest,
     RecommendationResponse,
 )
-from src.core.main import food_alternative_recommender, food_info_fetcher, food_recommender
 
+logger = core.logger
 router = APIRouter()
 
 
@@ -35,6 +36,14 @@ async def get_recommendation(request: RecommendationRequest):
 
     **conversation_id**: Identifier for the conversation these recommendations are associated with
     """
+    if hasattr(core, "food_recommender"):
+        food_recommender = core.food_recommender
+    else:
+        logger.warning(
+            "Using dummy food recommender. Please ensure the core module is properly configured with a recommender."
+        )
+        food_recommender = core.dummy_food_recommender
+
     recommender_output = food_recommender(
         request.user_id,
         preferences=request.preferences,
@@ -45,6 +54,11 @@ async def get_recommendation(request: RecommendationRequest):
         recommendation_count=request.recommendation_count,
         diversity_factor=request.diversity_factor,
     )
+
+    if recommender_output is None:
+        raise HTTPException(
+            status_code=404, detail=f"No recommendations found for user {request.user_id} with the specified criteria"
+        )
 
     response = RecommendationResponse(
         user_id=request.user_id,
@@ -75,17 +89,28 @@ async def get_recommendation(request: RecommendationRequest):
 
 
 @router.post("/alternative", response_model=AlternativeResponse)
-def get_alternative_recommendation(food_item: str):
-    """Alternative food (recipe or ingredient) recommendation endpoint. Information about food item is retrieved
+def get_alternative(food_item: str, num_alternatives: int = 5):
+    """Alternative food (recipe or ingredient) endpoint. Information about food item is retrieved
     to find alternatives that meet healthiness and sustainability criteria.
 
-    **food_item**: Name of the food item (recipe or ingredient) to get alternative recommendations for
+    **food_item**: Name of the food item (recipe or ingredient) to get alternatives for
+    **num_alternatives**: Number of alternatives to return (default is 5)
     """
+    if hasattr(core, "food_alternative"):
+        food_alternative = core.food_alternative
+    else:
+        logger.warning(
+            "Using dummy food alternative function. "
+            "Please ensure the core module is properly configured with an alternative provider."
+        )
+        food_alternative = core.dummy_food_alternative
 
-    info_response = food_info_fetcher(food_item)
+    alternative_output = food_alternative(food_item, k=num_alternatives)
 
-    alternatives = food_alternative_recommender(**info_response)
+    if alternative_output is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Cannot provide alternatives of '{food_item}' that meet healthiness and sustainability criteria",
+        )
 
-    alternative_response = AlternativeResponse(food_item=food_item, alternatives=alternatives)
-
-    return alternative_response
+    return AlternativeResponse(**alternative_output)

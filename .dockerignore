@@ -1,0 +1,11 @@
+__pycache__
+*.py[co]
+*.zip
+*.egg
+*venv
+.ruff_cache
+Dockerfile
+.dockerignore
+.git
+.gitignore
+.vscode

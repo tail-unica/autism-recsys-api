@@ -104,11 +104,24 @@ class InfoResponse(BaseModel):
     """Response model for food information endpoint"""
 
     food_item: str = Field(description="Name of the food item", example="Spaghetti Carbonara")
-    healthiness_score: float = Field(description="Score indicating healthiness (0.0-1.0)", example=0.65)
-    sustainability_score: float = Field(description="Score indicating sustainability (0.0-1.0)", example=0.78)
-    nutritional_values: dict[str, float] = Field(
+    food_item_type: str = Field(description="Type of food item (recipe or ingredient)", example="recipe")
+    healthiness_score: Optional[str] = Field(
+        description="Categorical score indicating healthiness (A - E or Low - HIGH)", example="B"
+    )
+    qualitative_healthiness: Optional[str] = Field(
+        description="Qualitative description of healthiness score",
+        example="Moderate healthiness level",
+    )
+    sustainability_score: Optional[str] = Field(
+        description="Categorical score across 5 levels indicating sustainability (A - E)", example="E"
+    )
+    qualitative_sustainability: Optional[str] = Field(
+        description="Qualitative description of sustainability score",
+        example="Low sustainability level",
+    )
+    nutritional_values: Optional[dict[str, Optional[float]]] = Field(
         description="Nutritional information for this food item",
-        example={"calories": 450.0, "protein": 12.0, "carbs": 56.0, "fat": 18.0},
+        example={"calories [cal]": 450.0, "protein [g]": 12.0, "carbs [g]": 56.0, "fat [g]": 18.0},
     )
     ingredients: Optional[IngredientList] = Field(
         default=None,
@@ -123,8 +136,69 @@ class InfoResponse(BaseModel):
 class AlternativeResponse(BaseModel):
     """Response model for alternative food recommendations"""
 
-    food_item: str = Field(description="Name of the original food item", example="Spaghetti Carbonara")
-    alternatives: list[str] = Field(
-        description="List of alternative food items (recipes or ingredients) that meet the required scores",
-        example=["Pasta alla Gricia", "Fettuccine Alfredo", "Penne with Basil Pesto"],
+    matched_food_item: InfoResponse = Field(
+        description="Information about the original food item that was matched",
+        example=InfoResponse(
+            food_item="Spaghetti Carbonara",
+            food_item_type="recipe",
+            healthiness_score="B",
+            qualitative_healthiness="Good healthiness level",
+            sustainability_score="E",
+            qualitative_sustainability="Inadequate sustainability level",
+            nutritional_values={"calories [cal]": 450.0, "protein [g]": 12.0, "carbs [g]": 56.0, "fat [g]": 18.0},
+            ingredients=IngredientList(
+                ingredients=["pasta", "eggs", "cheese pecorino", "black pepper"],
+                quantities=["100g", "2", "50g", "to taste"],
+            ),
+        ),
+    )
+    alternatives: list[InfoResponse] = Field(
+        description="List of alternative food items that meet healthiness and sustainability criteria",
+        example=[
+            InfoResponse(
+                food_item="Pasta alla gricia",
+                food_item_type="recipe",
+                healthiness_score="A",
+                qualitative_healthiness="Excellent healthiness level",
+                sustainability_score="E",
+                qualitative_sustainability="Inadequate sustainability level",
+                nutritional_values={"calories [cal]": 400.0, "protein [g]": 15.0, "carbs [g]": 50.0, "fat [g]": 10.0},
+                ingredients=IngredientList(
+                    ingredients=["pasta", "guanciale", "cheese pecorino", "black pepper"],
+                    quantities=["100g", "50g", "30g", "to taste"],
+                ),
+            ),
+            InfoResponse(
+                food_item="Fettuccine Alfredo",
+                food_item_type="recipe",
+                healthiness_score="C",
+                qualitative_healthiness="Fair healthiness level",
+                sustainability_score="B",
+                qualitative_sustainability="Good sustainability level",
+                nutritional_values={"calories [cal]": 500.0, "protein [g]": 10.0, "carbs [g]": 60.0, "fat [g]": 20.0},
+                ingredients=IngredientList(
+                    ingredients=["fettuccine", "cream", "parmesan cheese", "butter"],
+                    quantities=["100g", "50ml", "30g", "20g"],
+                ),
+            ),
+            InfoResponse(
+                food_item="Penne with basil pesto",
+                food_item_type="recipe",
+                healthiness_score="B",
+                qualitative_healthiness="Good healthiness level",
+                sustainability_score="C",
+                qualitative_sustainability="Fair sustainability level",
+                nutritional_values={"calories [cal]": 480.0, "protein [g]": 8.0, "carbs [g]": 55.0, "fat [g]": 22.0},
+                ingredients=IngredientList(
+                    ingredients=["penne", "basil pesto", "olive oil", "parmesan cheese"],
+                    quantities=["100g", "30g", "10ml", "20g"],
+                ),
+            ),
+        ],
+    )
+    scores: list[float] = Field(
+        description=(
+            "List of scores for each alternative indicating how well they meet healthiness and sustainability criteria"
+        ),
+        example=[0.85, 0.75, 0.65],
     )
