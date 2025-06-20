@@ -51,7 +51,7 @@ def get_food_info(food_item: str):
         "sustainability_score": qualitative_scores_dict["sustainability"]["score"],
         "qualitative_sustainability": qualitative_scores_dict["sustainability"]["qualitative"],
         "nutritional_values": nutritional_values,
-        "ingredients": ingredients_dict,
+        "ingredients_dict": ingredients_dict,
     }
 
 

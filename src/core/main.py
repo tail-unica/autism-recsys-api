@@ -117,7 +117,7 @@ def food_info_fetcher(food_item: str) -> dict:
         "sustainability_score": info["sustainability_score"],
         "qualitative_sustainability": info["qualitative_sustainability"],
         "nutritional_values": info["nutritional_values"],
-        "ingredients_dict": info["ingredients_dict"],
+        "ingredients": info["ingredients_dict"],
     }
 
 
