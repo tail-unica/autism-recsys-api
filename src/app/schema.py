@@ -17,6 +17,60 @@ class IngredientList(BaseModel):
     )
 
 
+class InfoRequest(BaseModel):
+    """Request model for food information endpoint"""
+
+    food_item: str = Field(
+        description="Name of the food item (recipe or ingredient) to get information about",
+        example="Spaghetti Carbonara",
+    )
+
+
+class InfoResponse(BaseModel):
+    """Response model for food information endpoint"""
+
+    food_item: str = Field(description="Name of the food item", example="Spaghetti Carbonara")
+    food_item_type: str = Field(description="Type of food item (recipe or ingredient)", example="recipe")
+    healthiness_score: Optional[str] = Field(
+        description="Categorical score indicating healthiness (A - E or Low - HIGH). "
+        "It corresponds to the Nutri Score by default",
+        example="B",
+    )
+    qualitative_healthiness: Optional[str] = Field(
+        description="Qualitative description of healthiness score",
+        example="Moderate healthiness level",
+    )
+    sustainability_score: Optional[str] = Field(
+        description="""
+        Categorical score across 5 levels indicating sustainability (A - E).
+        The score is computed by aggregating the Carbon Footprint (CF) and Water Footprint (WF) estimates
+        deriving from the SU-EATABLE-LIFE database. The aggregation is based on the following formula:
+        sustainability_score = (cf_score * cf_weight + wf_score * wf_weight)
+        where cf_weight and wf_weight are the rescaled factors proposed in the Developer Environmental Footprint
+        (EF3.0) package, corresponding to the Climate Change (CF) and Water Use (WF) factors.
+        The final scores are then mapped to the categorical scores (A - E) through K-means clustering,
+        where A is the most sustainable and E is the least sustainable.
+        """,
+        example="E",
+    )
+    qualitative_sustainability: Optional[str] = Field(
+        description="Qualitative description of sustainability score",
+        example="Low sustainability level",
+    )
+    nutritional_values: Optional[dict[str, Optional[float]]] = Field(
+        description="Nutritional information for this food item",
+        example={"calories [cal]": 450.0, "protein [g]": 12.0, "carbs [g]": 56.0, "fat [g]": 18.0},
+    )
+    ingredients: Optional[IngredientList] = Field(
+        default=None,
+        description="List of ingredients and their quantities for this food item",
+        example=IngredientList(
+            ingredients=["pasta", "eggs", "cheese pecorino", "black pepper"],
+            quantities=["100g", "2", "50g", "to taste"],
+        ),
+    )
+
+
 class RecommendationRequest(BaseModel):
     user_id: int = Field(description="Unique identifier for the user", example=12345)
     preferences: list[str] = Field(
@@ -57,7 +111,7 @@ class RecommendationRequest(BaseModel):
 class RecommendationItem(BaseModel):
     """Individual food recommendation with scores and metadata"""
 
-    name: str = Field(description="Name of the recommended food item", example="Spaghetti Carbonara")
+    food_item: str = Field(description="Name of the food item", example="Spaghetti Carbonara")
     score: float = Field(description="Overall recommendation score", example=0.92)
     explanation: str = Field(
         description="Human-readable explanation of why this item was recommended",
@@ -65,15 +119,21 @@ class RecommendationItem(BaseModel):
             "U25 interacted_with 'Pasta amatriciana' has_ingredient 'guanciale' has_ingredient 'Spaghetti Carbonara'"
         ),
     )
-    ingredients: list[tuple[str, str]] = Field(
-        description="Main ingredients in this food item",
-        example=[("pasta", "100g"), ("eggs", "2"), ("cheese pecorino", "50g"), ("black pepper", "to taste")],
-    )
-    healthiness_score: float = Field(description="Score indicating healthiness (0.0-1.0)", example=0.65)
-    sustainability_score: float = Field(description="Score indicating sustainability (0.0-1.0)", example=0.78)
-    nutritional_values: dict[str, float] = Field(
-        description="Nutritional information for this food item",
-        example={"calories": 450.0, "protein": 12.0, "carbs": 56.0, "fat": 18.0},
+    food_info: InfoResponse = Field(
+        description="Detailed information about the food item",
+        example=InfoResponse(
+            food_item="Spaghetti Carbonara",
+            food_item_type="recipe",
+            healthiness_score="B",
+            qualitative_healthiness="Good healthiness level",
+            sustainability_score="E",
+            qualitative_sustainability="Inadequate sustainability level",
+            nutritional_values={"calories [cal]": 450.0, "protein [g]": 12.0, "carbs [g]": 56.0, "fat [g]": 18.0},
+            ingredients=IngredientList(
+                ingredients=["pasta", "eggs", "cheese pecorino", "black pepper"],
+                quantities=["100g", "2", "50g", "to taste"],
+            ),
+        ),
     )
 
 
@@ -88,48 +148,6 @@ class RecommendationResponse(BaseModel):
         default=None,
         description="Identifier for the conversation these recommendations are associated with",
         example="conv_2025032012345",
-    )
-
-
-class InfoRequest(BaseModel):
-    """Request model for food information endpoint"""
-
-    food_item: str = Field(
-        description="Name of the food item (recipe or ingredient) to get information about",
-        example="Spaghetti Carbonara",
-    )
-
-
-class InfoResponse(BaseModel):
-    """Response model for food information endpoint"""
-
-    food_item: str = Field(description="Name of the food item", example="Spaghetti Carbonara")
-    food_item_type: str = Field(description="Type of food item (recipe or ingredient)", example="recipe")
-    healthiness_score: Optional[str] = Field(
-        description="Categorical score indicating healthiness (A - E or Low - HIGH)", example="B"
-    )
-    qualitative_healthiness: Optional[str] = Field(
-        description="Qualitative description of healthiness score",
-        example="Moderate healthiness level",
-    )
-    sustainability_score: Optional[str] = Field(
-        description="Categorical score across 5 levels indicating sustainability (A - E)", example="E"
-    )
-    qualitative_sustainability: Optional[str] = Field(
-        description="Qualitative description of sustainability score",
-        example="Low sustainability level",
-    )
-    nutritional_values: Optional[dict[str, Optional[float]]] = Field(
-        description="Nutritional information for this food item",
-        example={"calories [cal]": 450.0, "protein [g]": 12.0, "carbs [g]": 56.0, "fat [g]": 18.0},
-    )
-    ingredients: Optional[IngredientList] = Field(
-        default=None,
-        description="List of ingredients and their quantities for this food item",
-        example=IngredientList(
-            ingredients=["pasta", "eggs", "cheese pecorino", "black pepper"],
-            quantities=["100g", "2", "50g", "to taste"],
-        ),
     )
 
 
