@@ -17,6 +17,53 @@ class IngredientList(BaseModel):
     )
 
 
+class HealthinessInfo(BaseModel):
+    """Model for healthiness information"""
+
+    score: str = Field(
+        description="Categorical score indicating healthiness (A - E or Low - HIGH)."
+        "It corresponds to the Nutri Score by default",
+        example="B",
+    )
+    qualitative: Optional[str] = Field(
+        default=None,
+        description="Qualitative description of healthiness score",
+        example="Moderate healthiness level",
+    )
+
+
+class SustainabilityInfo(BaseModel):
+    """Model for sustainability information"""
+
+    score: str = Field(
+        description="""Categorical score across 5 levels indicating sustainability (A - E).
+        The score is computed by aggregating the Carbon Footprint (CF) and Water Footprint (WF) estimates
+        deriving from the SU-EATABLE-LIFE database. The aggregation is based on the following formula:
+        sustainability_score = (cf_score * cf_weight + wf_score * wf_weight)
+        where cf_weight and wf_weight are the rescaled factors proposed in the Developer Environmental Footprint
+        (EF3.0) package, corresponding to the Climate Change (CF) and Water Use (WF) factors.
+        The final scores are then mapped to the categorical scores (A - E) through K-means clustering,
+        where A is the most sustainable and E is the least sustainable.
+        """,
+        example="C",
+    )
+    qualitative: Optional[str] = Field(
+        default=None,
+        description="Qualitative description of sustainability score",
+        example="Moderate sustainability level",
+    )
+    CF: Optional[float] = Field(
+        default=None,
+        description="Carbon Footprint (CF) score",
+        example=0.5,
+    )
+    WF: Optional[float] = Field(
+        default=None,
+        description="Water Footprint (WF) score",
+        example=0.3,
+    )
+
+
 class InfoRequest(BaseModel):
     """Request model for food information endpoint"""
 
@@ -31,31 +78,14 @@ class InfoResponse(BaseModel):
 
     food_item: str = Field(description="Name of the food item", example="Spaghetti Carbonara")
     food_item_type: str = Field(description="Type of food item (recipe or ingredient)", example="recipe")
-    healthiness_score: Optional[str] = Field(
-        description="Categorical score indicating healthiness (A - E or Low - HIGH). "
-        "It corresponds to the Nutri Score by default",
-        example="B",
+    healthiness: Optional[HealthinessInfo] = Field(
+        description="""Healthiness information for this food item, including score and qualitative description""",
+        example=HealthinessInfo(score="B", qualitative="Moderate healthiness level"),
     )
-    qualitative_healthiness: Optional[str] = Field(
-        description="Qualitative description of healthiness score",
-        example="Moderate healthiness level",
-    )
-    sustainability_score: Optional[str] = Field(
-        description="""
-        Categorical score across 5 levels indicating sustainability (A - E).
-        The score is computed by aggregating the Carbon Footprint (CF) and Water Footprint (WF) estimates
-        deriving from the SU-EATABLE-LIFE database. The aggregation is based on the following formula:
-        sustainability_score = (cf_score * cf_weight + wf_score * wf_weight)
-        where cf_weight and wf_weight are the rescaled factors proposed in the Developer Environmental Footprint
-        (EF3.0) package, corresponding to the Climate Change (CF) and Water Use (WF) factors.
-        The final scores are then mapped to the categorical scores (A - E) through K-means clustering,
-        where A is the most sustainable and E is the least sustainable.
-        """,
-        example="E",
-    )
-    qualitative_sustainability: Optional[str] = Field(
-        description="Qualitative description of sustainability score",
-        example="Low sustainability level",
+    sustainability: Optional[SustainabilityInfo] = Field(
+        description="""Sustainability information for this food item, including score,
+        qualitative description, and CF/WF scores""",
+        example=SustainabilityInfo(score="C", qualitative="Moderate sustainability level", CF=0.5, WF=0.3),
     )
     nutritional_values: Optional[dict[str, Optional[float]]] = Field(
         description="Nutritional information for this food item",
@@ -124,10 +154,13 @@ class RecommendationItem(BaseModel):
         example=InfoResponse(
             food_item="Spaghetti Carbonara",
             food_item_type="recipe",
-            healthiness_score="B",
-            qualitative_healthiness="Good healthiness level",
-            sustainability_score="E",
-            qualitative_sustainability="Inadequate sustainability level",
+            healthiness=HealthinessInfo(
+                score="B",
+                qualitative="Good healthiness level",
+            ),
+            sustainability=SustainabilityInfo(
+                score="E", qualitative="Inadequate sustainability level", CF=0.5, WF=0.3
+            ),
             nutritional_values={"calories [cal]": 450.0, "protein [g]": 12.0, "carbs [g]": 56.0, "fat [g]": 18.0},
             ingredients=IngredientList(
                 ingredients=["pasta", "eggs", "cheese pecorino", "black pepper"],
@@ -159,10 +192,13 @@ class AlternativeResponse(BaseModel):
         example=InfoResponse(
             food_item="Spaghetti Carbonara",
             food_item_type="recipe",
-            healthiness_score="B",
-            qualitative_healthiness="Good healthiness level",
-            sustainability_score="E",
-            qualitative_sustainability="Inadequate sustainability level",
+            healthiness=HealthinessInfo(
+                score="B",
+                qualitative="Good healthiness level",
+            ),
+            sustainability=SustainabilityInfo(
+                score="E", qualitative="Inadequate sustainability level", CF=0.5, WF=0.3
+            ),
             nutritional_values={"calories [cal]": 450.0, "protein [g]": 12.0, "carbs [g]": 56.0, "fat [g]": 18.0},
             ingredients=IngredientList(
                 ingredients=["pasta", "eggs", "cheese pecorino", "black pepper"],
@@ -176,10 +212,13 @@ class AlternativeResponse(BaseModel):
             InfoResponse(
                 food_item="Pasta alla gricia",
                 food_item_type="recipe",
-                healthiness_score="A",
-                qualitative_healthiness="Excellent healthiness level",
-                sustainability_score="E",
-                qualitative_sustainability="Inadequate sustainability level",
+                healthiness=HealthinessInfo(
+                    score="A",
+                    qualitative="Excellent healthiness level",
+                ),
+                sustainability=SustainabilityInfo(
+                    score="E", qualitative="Inadequate sustainability level", CF=0.5, WF=0.3
+                ),
                 nutritional_values={"calories [cal]": 400.0, "protein [g]": 15.0, "carbs [g]": 50.0, "fat [g]": 10.0},
                 ingredients=IngredientList(
                     ingredients=["pasta", "guanciale", "cheese pecorino", "black pepper"],
@@ -189,10 +228,14 @@ class AlternativeResponse(BaseModel):
             InfoResponse(
                 food_item="Fettuccine Alfredo",
                 food_item_type="recipe",
-                healthiness_score="C",
-                qualitative_healthiness="Fair healthiness level",
-                sustainability_score="B",
-                qualitative_sustainability="Good sustainability level",
+                healthiness=HealthinessInfo(
+                    score="C",
+                    qualitative="Fair healthiness level",
+                ),
+                sustainability=SustainabilityInfo(
+                    score="B",
+                    qualitative="Good sustainability level",
+                ),
                 nutritional_values={"calories [cal]": 500.0, "protein [g]": 10.0, "carbs [g]": 60.0, "fat [g]": 20.0},
                 ingredients=IngredientList(
                     ingredients=["fettuccine", "cream", "parmesan cheese", "butter"],
@@ -202,10 +245,14 @@ class AlternativeResponse(BaseModel):
             InfoResponse(
                 food_item="Penne with basil pesto",
                 food_item_type="recipe",
-                healthiness_score="B",
-                qualitative_healthiness="Good healthiness level",
-                sustainability_score="C",
-                qualitative_sustainability="Fair sustainability level",
+                healthiness=HealthinessInfo(
+                    score="B",
+                    qualitative="Good healthiness level",
+                ),
+                sustainability=SustainabilityInfo(
+                    score="C",
+                    qualitative="Fair sustainability level",
+                ),
                 nutritional_values={"calories [cal]": 480.0, "protein [g]": 8.0, "carbs [g]": 55.0, "fat [g]": 22.0},
                 ingredients=IngredientList(
                     ingredients=["penne", "basil pesto", "olive oil", "parmesan cheese"],

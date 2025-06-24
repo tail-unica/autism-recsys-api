@@ -1,11 +1,10 @@
 def filter_healthy_and_sustainable(
-    alternatives: list, distances: list, healthiness: str, sustainability: str, distance_weight: float = 0.8
+    alternatives: list[tuple], healthiness: str, sustainability: str, distance_weight: float = 0.8
 ) -> list:
     """Filter alternatives based on healthiness and sustainability scores.
 
     Args:
-        alternatives (list): List of alternative food items.
-        distances (list): List of distances for the alternatives.
+        alternatives (list): List of alternative food items with distances from matched food item.
         healthiness (str): Categorical healthiness score of the matched food item.
         sustainability (str): Categorical sustainability score of the matched food item.
 
@@ -16,9 +15,9 @@ def filter_healthy_and_sustainable(
     sustainability_reference = map_categorical_score(sustainability)
 
     filtered_alternatives = []
-    for alt, dist in zip(alternatives, distances):
-        healthiness_score = map_categorical_score(alt["healthiness_score"])
-        sustainability_score = map_categorical_score(alt["sustainability_score"])
+    for alt, dist in alternatives:
+        healthiness_score = map_categorical_score(alt.get("healthiness", {}).get("score", None))
+        sustainability_score = map_categorical_score(alt.get("sustainability", {}).get("score", None))
         similarity = 1 - dist
         alt_score = alternative_score(
             similarity,

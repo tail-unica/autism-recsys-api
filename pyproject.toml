@@ -54,6 +54,7 @@ dependencies = [
 dev = [
     "ipykernel>=6.29.5",
     "ruff",
+    "scalene>=1.5.51",
     "scikit-learn>=1.6.1",
     "scipy>=1.13.1",
     "yellowbrick>=1.5",

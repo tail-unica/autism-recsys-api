@@ -78,10 +78,16 @@ def dummy_food_info_fetcher(food_item: str) -> dict:
     return {
         "food_item": food_item,
         "food_item_type": "recipe",
-        "healthiness_score": "B",
-        "qualitative_healthiness": "Excellent healthiness level",
-        "sustainability_score": "C",
-        "qualitative_sustainability": "Fair sustainability level",
+        "healthiness": {
+            "score": "B",
+            "qualitative": "Good healthiness level",
+        },
+        "sustainability": {
+            "score": "C",
+            "qualitative": "Fair sustainability level",
+            "CF": 0.8,
+            "WF": 0.7,
+        },
         "nutritional_values": {
             "calories [cal]": 100,
             "protein [g]": 5,
@@ -112,10 +118,8 @@ def food_info_fetcher(food_item: str) -> dict:
     return {
         "food_item": best_match_name,
         "food_item_type": info["food_item_type"],
-        "healthiness_score": info["healthiness_score"],
-        "qualitative_healthiness": info["qualitative_healthiness"],
-        "sustainability_score": info["sustainability_score"],
-        "qualitative_sustainability": info["qualitative_sustainability"],
+        "healthiness": info["healthiness"],
+        "sustainability": info["sustainability"],
         "nutritional_values": info["nutritional_values"],
         "ingredients": info["ingredients_dict"],
     }
@@ -146,6 +150,7 @@ def food_alternative(food_item: str, k: int) -> dict:
         food_item (str): Name of the food item to find alternatives for.
         k (int): Number of alternative food items to return.
     """
+
     max_distance_threshold = cfg.semantic_search.max_distance_threshold
 
     matches = semantic_matcher.find_similar_items(
@@ -156,22 +161,25 @@ def food_alternative(food_item: str, k: int) -> dict:
     matches, matches_distances = zip(*matches)
     matched_item, alternatives = matches[0], matches[1:]
 
+    logger.info(f"Retrieving information for matched item: {matched_item}")
     matched_item_info = get_food_info(matched_item)  # Fetch info for the matched item
+    logger.info(f"Retrieving information for alternatives: {alternatives}")
     alternatives_info = [get_food_info(alt) for alt in alternatives]
-    same_type_alternatives_info = [
-        alt for alt in alternatives_info if alt["food_item_type"] == matched_item_info["food_item_type"]
+    same_type_alternatives_info_distances = [
+        (alt, dist)
+        for alt, dist in zip(alternatives_info, matches_distances[1:])
+        if alt["food_item_type"] == matched_item_info["food_item_type"]
     ]
-    if not same_type_alternatives_info:
+    if not same_type_alternatives_info_distances:
         logger.warning(
             f"No alternatives found for {matched_item_info['food_item']} of type {matched_item_info['food_item_type']}"
         )
         return None
 
     filtered_alternatives = filter_healthy_and_sustainable(
-        same_type_alternatives_info,
-        distances=matches_distances[1:],
-        healthiness=matched_item_info["healthiness_score"],
-        sustainability=matched_item_info["sustainability_score"],
+        same_type_alternatives_info_distances,
+        healthiness=matched_item_info.get("healthiness", {}).get("score", None),
+        sustainability=matched_item_info.get("sustainability", {}).get("score", None),
         distance_weight=cfg.core.alternative_distance_weight,
     )
 

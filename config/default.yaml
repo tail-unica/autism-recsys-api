@@ -11,6 +11,13 @@ core:
     D: Poor
     E: Inadequate
   alternative_distance_weight: 0.8
+  info_columns:
+    - name
+    - food_item_type
+    - healthiness_score_groups
+    - environmental_impact
+    - nutritional_values
+    - flat_ingredients
 
 semantic_search:
   model_name: "all-MiniLM-L6-v2"

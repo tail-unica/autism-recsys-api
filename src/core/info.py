@@ -17,66 +17,65 @@ def get_food_info(food_item: str):
     Returns:
         dict: Food information including healthiness score, sustainability score, nutritional values, and ingredients.
     """
-    info_columns = [
-        "name",
-        "food_item_type",
-        "healthiness_score_groups",
-        "environmental_impact",
-        "nutritional_values",
-        "flat_ingredients",
-    ]
-    matched_food_items = food_data.filter(pl.col("name") == food_item).select(info_columns).collect()
-    # TODO: matched_row actually can have multiple rows due to both ingredients and recipes being repeated
+    info_columns = cfg.core.info_columns
+    matched_food_items = food_data.filter(pl.col("name") == food_item).select(info_columns)
+    # TODO: matched_food_items actually can have multiple rows due to both ingredients and recipes being repeated
     # Think about how to better handle this
+    matched_row = matched_food_items.first()
 
-    if matched_food_items.height > 1:
-        matched_row = matched_food_items[0]
-    else:
-        matched_row = matched_food_items
-
-    food_item_type = matched_row["food_item_type"].item()
+    food_item_type = matched_row.select("food_item_type").collect().item()
 
     # Mapping scores to qualitative formats
-    qualitative_scores_dict = map_scores_to_qualitative(matched_row)
+    qualitative_scores_dict = get_health_sustainability_info(matched_row)
 
     # If nutritional values or ingredients structs only contain None, set them to None
-    nutritional_values = validate_series_struct(matched_row["nutritional_values"])
-    ingredients_dict = validate_series_struct(matched_row["flat_ingredients"])
+    nutritional_values = validate_struct(matched_row, "nutritional_values")
+    ingredients_dict = validate_struct(matched_row, "flat_ingredients")
 
     return {
         "food_item": food_item,
         "food_item_type": food_item_type,
-        "healthiness_score": qualitative_scores_dict["healthiness"]["score"],
-        "qualitative_healthiness": qualitative_scores_dict["healthiness"]["qualitative"],
-        "sustainability_score": qualitative_scores_dict["sustainability"]["score"],
-        "qualitative_sustainability": qualitative_scores_dict["sustainability"]["qualitative"],
+        "healthiness": qualitative_scores_dict["healthiness"],
+        "sustainability": qualitative_scores_dict["sustainability"],
         "nutritional_values": nutritional_values,
         "ingredients_dict": ingredients_dict,
     }
 
 
-def map_scores_to_qualitative(matched_row: pl.DataFrame) -> dict:
-    """Maps healthiness and sustainability scores to qualitative descriptions.
+def get_health_sustainability_info(matched_row: pl.LazyFrame) -> dict:
+    """Retrieves healthiness and sustainability information from a matched food item row.
 
     Args:
-        matched_row (pl.DataFrame): DataFrame containing the matched food item information.
+        matched_row (pl.LazyFrame): LazyFrame containing the matched food item information.
 
     Returns:
-        dict: Dictionary with qualitative descriptions for healthiness and sustainability scores.
+        dict: Dictionary with healthiness and sustainability scores and qualitative descriptions.
     """
-    healthiness_score = matched_row["healthiness_score_groups"].item()[cfg.core.healthiness_metric]
-    sustainability_score = matched_row["environmental_impact"].item()["sustainability_score_group"]
+    healthiness_score = (
+        matched_row.select(pl.col("healthiness_score_groups").struct.field(cfg.core.healthiness_metric))
+        .collect()
+        .item()
+    )
+    sustainability = matched_row.select(
+        pl.col("environmental_impact").struct.field(["CF", "WF", "sustainability_score_group"])
+    ).collect()
+    sustainability_score = sustainability["sustainability_score_group"].item()
 
-    return {
-        "healthiness": {
+    health_sust_info = {"healthiness": None, "sustainability": None}
+    if healthiness_score is not None:
+        health_sust_info["healthiness"] = {
             "score": healthiness_score,
             "qualitative": map_score_to_qualitative(healthiness_score, "healthiness"),
-        },
-        "sustainability": {
+        }
+    if sustainability_score is not None:
+        health_sust_info["sustainability"] = {
             "score": sustainability_score,
             "qualitative": map_score_to_qualitative(sustainability_score, "sustainability"),
-        },
-    }
+            "CF": sustainability["CF"].item(),
+            "WF": sustainability["WF"].item(),
+        }
+
+    return health_sust_info
 
 
 def map_score_to_qualitative(score: str, score_type: str) -> str:
@@ -99,15 +98,16 @@ def map_score_to_qualitative(score: str, score_type: str) -> str:
     return qualitative_score
 
 
-def validate_series_struct(series: pl.DataFrame) -> Optional[pl.Series]:
+def validate_struct(df: pl.LazyFrame, struct_col: str) -> Optional[pl.Series]:
     """Validates a struct to ensure it does not contain only None values.
 
     Args:
-        series (pl.Series): The Polars Series containing the struct to validate.
+        df (pl.LazyFrame): The Polars LazyFrame containing the struct.
+        struct_col (str): The name of the struct column to validate.
 
     Returns:
         Optional[pl.Series]: The validated struct, or None if it contains only None values.
     """
-    if series.struct.unnest().select(pl.any_horizontal(pl.all().is_null())).item() is None:
+    if (df.select(pl.col(struct_col).struct.unnest()).select(pl.all_horizontal(pl.all().is_null()))).collect().item():
         return None
-    return series.item()
+    return df.select(struct_col).collect().item()

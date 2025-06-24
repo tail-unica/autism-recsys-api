@@ -1,13 +1,14 @@
 from fastapi import FastAPI, Response
 from fastapi.responses import RedirectResponse
 
-from .routers import info, recommendation
+from src import __version__
+from src.app.routers import info, recommendation
 
 # Create a FastAPI instance
 app = FastAPI(
     title="PhaseAPI - Food Recommendation System",
     description="API for providing personalized food recommendations",
-    version="1.0.0",
+    version=__version__,
 )
 
 app.include_router(info.router, tags=["info"])
