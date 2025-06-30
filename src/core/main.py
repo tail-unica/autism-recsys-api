@@ -95,6 +95,7 @@ def dummy_food_info_fetcher(food_item: str) -> dict:
             "fats [g]": 2,
         },
         "ingredients": {"ingredients": ["ingredient1", "ingredient2"], "quantities": ["100g", "50g"]},
+        "food_item_url": "https://www.example.com/recipe",
     }
 
 

@@ -171,6 +171,7 @@ class RecommendationItem(BaseModel):
                 ingredients=["pasta", "eggs", "cheese pecorino", "black pepper"],
                 quantities=["100g", "2", "50g", "to taste"],
             ),
+            food_item_url="https://www.food.com/recipe/spaghetti-carbonara-for-one-447544",
         ),
     )
 
@@ -209,6 +210,7 @@ class AlternativeResponse(BaseModel):
                 ingredients=["pasta", "eggs", "cheese pecorino", "black pepper"],
                 quantities=["100g", "2", "50g", "to taste"],
             ),
+            food_item_url="https://www.food.com/recipe/spaghetti-carbonara-for-one-447544",
         ),
     )
     alternatives: list[InfoResponse] = Field(
@@ -229,6 +231,7 @@ class AlternativeResponse(BaseModel):
                     ingredients=["pasta", "guanciale", "cheese pecorino", "black pepper"],
                     quantities=["100g", "50g", "30g", "to taste"],
                 ),
+                food_item_url="https://www.food.com/recipe/pasta-alla-gricia-447544",
             ),
             InfoResponse(
                 food_item="Fettuccine Alfredo",
@@ -246,6 +249,7 @@ class AlternativeResponse(BaseModel):
                     ingredients=["fettuccine", "cream", "parmesan cheese", "butter"],
                     quantities=["100g", "50ml", "30g", "20g"],
                 ),
+                food_item_url="https://www.food.com/recipe/fettuccine-alfredo-447544",
             ),
             InfoResponse(
                 food_item="Penne with basil pesto",
@@ -263,6 +267,7 @@ class AlternativeResponse(BaseModel):
                     ingredients=["penne", "basil pesto", "olive oil", "parmesan cheese"],
                     quantities=["100g", "30g", "10ml", "20g"],
                 ),
+                food_item_url="https://www.food.com/recipe/penne-with-basil-pesto-447544",
             ),
         ],
     )
