@@ -99,6 +99,11 @@ class InfoResponse(BaseModel):
             quantities=["100g", "2", "50g", "to taste"],
         ),
     )
+    food_item_url: Optional[str] = Field(
+        default=None,
+        description="Optional URL to a detailed page about this food item (currently reserved only for recipes)",
+        example="https://www.food.com/recipe/cranberry-orange-caramel-corn-447642",
+    )
 
 
 class RecommendationRequest(BaseModel):

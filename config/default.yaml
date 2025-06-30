@@ -18,6 +18,7 @@ core:
     - environmental_impact
     - nutritional_values
     - flat_ingredients
+    - recipe_url
 
 semantic_search:
   model_name: "all-MiniLM-L6-v2"

@@ -105,15 +105,15 @@ def get_alternative(food_item: str, num_alternatives: int = 5):
     """Alternative food (recipe or ingredient) endpoint. Information about food item is retrieved
     to find alternatives that meet healthiness and sustainability criteria.
 
-    Alternatives are retrieved based on similarity to the provided food item, and finally filtered
-    to ensure they meet better healthiness and sustainability criteria.
+    Alternatives are retrieved based on similarity to the provided food item, first according to the food item type
+    (recipe or ingredient) and finally filtered to ensure they meet better healthiness and sustainability criteria.
     Specifically, this filtering is performed according to the following procedure:
     1. Retrieve alternatives based on similarity to the provided food item.
     2. For each alternative, retrieve its healthiness and sustainability categorical scores if available.
     3. Map the categorical scores to numerical values, e.g., 'A' -> 1.0, 'B' -> 2.0, etc.
     4. Calculate the score difference between the alternative and the provided food item.
-        a. healthiness = healthiness_{alternative} - healthiness_{provided_food_item}
-        b. sustainability = sustainability_{alternative} - sustainability_{provided_food_item}
+        1. healthiness = healthiness_{alternative} - healthiness_{provided_food_item}
+        2. sustainability = sustainability_{alternative} - sustainability_{provided_food_item}
     5. If the sum of healthiness and sustainability is positive, discard the alternative.
     6. Calculate an overall score accounting also for similarity to the provided food item
         > (similarity * similarity_weight + healthiness + sustainability) / 3.0

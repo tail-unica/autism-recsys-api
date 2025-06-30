@@ -32,13 +32,16 @@ def get_food_info(food_item: str):
     nutritional_values = validate_struct(matched_row, "nutritional_values")
     ingredients_dict = validate_struct(matched_row, "flat_ingredients")
 
+    food_item_url = matched_row.select("recipe_url").collect().item()
+
     return {
         "food_item": food_item,
         "food_item_type": food_item_type,
         "healthiness": qualitative_scores_dict["healthiness"],
         "sustainability": qualitative_scores_dict["sustainability"],
         "nutritional_values": nutritional_values,
-        "ingredients_dict": ingredients_dict,
+        "ingredients": ingredients_dict,
+        "food_item_url": food_item_url,
     }
 
 

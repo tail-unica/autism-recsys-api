@@ -16,8 +16,14 @@ def filter_healthy_and_sustainable(
 
     filtered_alternatives = []
     for alt, dist in alternatives:
-        healthiness_score = map_categorical_score(alt.get("healthiness", {}).get("score", None))
-        sustainability_score = map_categorical_score(alt.get("sustainability", {}).get("score", None))
+        if (alt_healthiness := alt.get("healthiness", None)) is not None:
+            alt_healthiness = alt_healthiness.get("score", None)
+
+        if (alt_sustainability := alt.get("sustainability", None)) is not None:
+            alt_sustainability = alt_sustainability.get("score", None)
+
+        healthiness_score = map_categorical_score(alt_healthiness)
+        sustainability_score = map_categorical_score(alt_sustainability)
         similarity = 1 - dist
         alt_score = alternative_score(
             similarity,

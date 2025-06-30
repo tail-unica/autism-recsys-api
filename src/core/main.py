@@ -94,7 +94,7 @@ def dummy_food_info_fetcher(food_item: str) -> dict:
             "carbohydrates [g]": 20,
             "fats [g]": 2,
         },
-        "ingredients_dict": {"ingredients": ["ingredient1", "ingredient2"], "quantities": ["100g", "50g"]},
+        "ingredients": {"ingredients": ["ingredient1", "ingredient2"], "quantities": ["100g", "50g"]},
     }
 
 
@@ -121,7 +121,7 @@ def food_info_fetcher(food_item: str) -> dict:
         "healthiness": info["healthiness"],
         "sustainability": info["sustainability"],
         "nutritional_values": info["nutritional_values"],
-        "ingredients": info["ingredients_dict"],
+        "ingredients": info["ingredients"],
     }
 
 
@@ -176,10 +176,16 @@ def food_alternative(food_item: str, k: int) -> dict:
         )
         return None
 
+    if (healthiness := matched_item_info.get("healthiness", None)) is not None:
+        healthiness = healthiness.get("score", None)
+
+    if (sustainability := matched_item_info.get("sustainability", None)) is not None:
+        sustainability = sustainability.get("score", None)
+
     filtered_alternatives = filter_healthy_and_sustainable(
         same_type_alternatives_info_distances,
-        healthiness=matched_item_info.get("healthiness", {}).get("score", None),
-        sustainability=matched_item_info.get("sustainability", {}).get("score", None),
+        healthiness=healthiness,
+        sustainability=sustainability,
         distance_weight=cfg.core.alternative_distance_weight,
     )
 
