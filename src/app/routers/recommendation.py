@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 
 import src.core.main as core
 from src.app.schema import (
+    AlternativeRequest,
     AlternativeResponse,
     RecommendationItem,
     RecommendationRequest,
@@ -101,7 +102,7 @@ async def get_recommendation(request: RecommendationRequest):
 
 
 @router.post("/alternative", response_model=AlternativeResponse)
-def get_alternative(food_item: str, num_alternatives: int = 5):
+def get_alternative(request: AlternativeRequest):
     """Alternative food (recipe or ingredient) endpoint. Information about food item is retrieved
     to find alternatives that meet healthiness and sustainability criteria.
 
@@ -133,7 +134,8 @@ def get_alternative(food_item: str, num_alternatives: int = 5):
         )
         food_alternative = core.dummy_food_alternative
 
-    alternative_output = food_alternative(food_item, k=num_alternatives)
+    food_item = request.food_item
+    alternative_output = food_alternative(food_item, k=request.num_alternatives, food_item_type=request.food_item_type)
 
     if alternative_output is None:
         raise HTTPException(

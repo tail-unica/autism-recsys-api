@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -70,6 +70,12 @@ class InfoRequest(BaseModel):
     food_item: str = Field(
         description="Name of the food item (recipe or ingredient) to get information about",
         example="Spaghetti Carbonara",
+    )
+    food_item_type: Optional[Literal["ingredient", "recipe"]] = Field(
+        default=None,
+        description="""Type of food item (recipe or ingredient).
+        If not provided, the system will determine it automatically""",
+        example="recipe",
     )
 
 
@@ -187,6 +193,16 @@ class RecommendationResponse(BaseModel):
         default=None,
         description="Identifier for the conversation these recommendations are associated with",
         example="conv_2025032012345",
+    )
+
+
+class AlternativeRequest(InfoRequest):
+    """Request model for alternative food recommendations"""
+
+    num_alternatives: int = Field(
+        default=5,
+        description="Number of alternative food items to return",
+        example=3,
     )
 
 

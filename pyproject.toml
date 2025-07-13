@@ -43,7 +43,6 @@ dependencies = [
     "pydantic",
     "uvicorn",
     "polars",
-    # "hopwise"
     "sentence-transformers>=4.1.0",
     "faiss-gpu>=1.7.2",
     "numpy==1.26.4",
@@ -54,6 +53,7 @@ dependencies = [
 dev = [
     "ipykernel>=6.29.5",
     "ruff",
+    # "hopwise[pathlm,cli]",
     "scalene>=1.5.51",
     "scikit-learn>=1.6.1",
     "scipy>=1.13.1",

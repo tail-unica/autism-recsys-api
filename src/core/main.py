@@ -1,5 +1,6 @@
 import logging
 from functools import lru_cache
+from typing import Literal, Optional
 
 from src.core import cfg, semantic_matcher
 from src.core.alternative import filter_healthy_and_sustainable
@@ -100,29 +101,43 @@ def dummy_food_info_fetcher(food_item: str) -> dict:
 
 
 @lru_cache(maxsize=1024)
-def food_info_fetcher(food_item: str) -> dict:
+def food_info_fetcher(food_item: str, food_item_type: Optional[Literal["ingredient", "recipe"]] = None) -> dict:
     """Enhanced food info fetcher with semantic matching."""
 
     max_distance_threshold = cfg.semantic_search.max_distance_threshold
 
     # Find best match
-    best_match_name, match_distance = semantic_matcher.find_most_similar_item(
+    best_matches = semantic_matcher.find_similar_items(
         query=food_item,
+        top_k=3,
         max_distance=max_distance_threshold,
     )
 
-    if best_match_name is None:
+    if not best_matches:
+        logger.warning(f"No matches found for food item: {food_item}")
         return None
 
-    info = get_food_info(best_match_name)
+    best_matches_names, _ = zip(*best_matches)
+    if food_item_type is not None:
+        matches_info = [get_food_info(name) for name in best_matches_names]
+        matches_info = [info for info in matches_info if info["food_item_type"] == food_item_type]
+
+        if not matches_info:
+            logger.warning(f"No matches found for food item: {food_item} of type {food_item_type}")
+            return None
+    else:
+        matches_info = [get_food_info(best_matches_names[0])]  # Get info for the best match only
+
+    best_match_name = best_matches_names[0]
+    best_match_info = matches_info[0]
 
     return {
         "food_item": best_match_name,
-        "food_item_type": info["food_item_type"],
-        "healthiness": info["healthiness"],
-        "sustainability": info["sustainability"],
-        "nutritional_values": info["nutritional_values"],
-        "ingredients": info["ingredients"],
+        "food_item_type": best_match_info["food_item_type"],
+        "healthiness": best_match_info["healthiness"],
+        "sustainability": best_match_info["sustainability"],
+        "nutritional_values": best_match_info["nutritional_values"],
+        "ingredients": best_match_info["ingredients"],
     }
 
 
@@ -144,7 +159,7 @@ def dummy_food_alternative(food_item: str, k: int) -> dict:
 
 
 @lru_cache(maxsize=1024)
-def food_alternative(food_item: str, k: int) -> dict:
+def food_alternative(food_item: str, k: int, food_item_type: Optional[Literal["ingredient", "recipe"]] = None) -> dict:
     """Find alternatives for a given food item based on healthiness and sustainability criteria.
 
     Args:
@@ -154,16 +169,16 @@ def food_alternative(food_item: str, k: int) -> dict:
 
     max_distance_threshold = cfg.semantic_search.max_distance_threshold
 
+    logger.info(f"Finding best match of {food_item} and retrieving its info")
+    matched_item_info = food_info_fetcher(food_item, food_item_type=food_item_type)
     matches = semantic_matcher.find_similar_items(
-        query=food_item,
+        query=matched_item_info["food_item"],
         top_k=k + 1,  # +1 to get the matched item itself
         max_distance=max_distance_threshold,
     )
     matches, matches_distances = zip(*matches)
-    matched_item, alternatives = matches[0], matches[1:]
+    alternatives = matches[1:]  # Exclude the matched item itself
 
-    logger.info(f"Retrieving information for matched item: {matched_item}")
-    matched_item_info = get_food_info(matched_item)  # Fetch info for the matched item
     logger.info(f"Retrieving information for alternatives: {alternatives}")
     alternatives_info = [get_food_info(alt) for alt in alternatives]
     same_type_alternatives_info_distances = [
