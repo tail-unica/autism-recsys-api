@@ -7,3 +7,5 @@
 *.pyc
 *.log
 *venv/
+data/
+checkpoint/
