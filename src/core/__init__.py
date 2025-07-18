@@ -5,7 +5,7 @@ import os
 import numpy as np
 import polars as pl
 import torch
-from hopwise.data.utils import create_dataset, data_preparation
+from hopwise.data.utils import PathLanguageModelingTokenType, create_dataset, data_preparation
 from hopwise.model.logits_processor import LogitsProcessorList
 from hopwise.model.sequence_postprocessor import CumulativeSequenceScorePostProcessor
 from hopwise.utils import get_model, init_seed
@@ -15,7 +15,7 @@ from safetensors.torch import load_file
 from transformers import AutoTokenizer  # , StoppingCriteriaList
 
 from src.core.recommendation import (
-    # RestrictionLogitsProcessorWordLevel,
+    RestrictionLogitsProcessorWordLevel,
     ZeroShotConstrainedLogitsProcessor,
     # ZeroShotCriteria,
     ZeroShotCumulativeSequenceScorePostProcessor,
@@ -121,20 +121,24 @@ existing_user_cumulative_sequence_postprocessor = CumulativeSequenceScorePostPro
 zero_shot_sequence_postprocessor = ZeroShotCumulativeSequenceScorePostProcessor(dataset.tokenizer, dataset.item_num)
 
 constrained_logits_processors_list = recommender.logits_processor_list
-# zero_shot_restriction_logits_processor = RestrictionLogitsProcessorWordLevel(
-#     tokenized_ckg=dataset.get_tokenized_ckg(),
-#     tokenizer=dataset.tokenizer,
-#     entity_mapping=dataset.field2id_token["entity_id"],
-#     item_num=dataset.item_num,
-#     propagate_connected_entities=cfg.recommender.propagate_connected_entities,
-# )
+zero_shot_restriction_logits_processor = RestrictionLogitsProcessorWordLevel(
+    tokenized_ckg=dataset.get_tokenized_ckg(),
+    tokenizer=dataset.tokenizer,
+    entity_mapping=dataset.field2id_token["entity_id"],
+    item_num=dataset.item_num,
+    propagate_connected_entities=cfg.recommender.propagate_connected_entities,
+)
 
+ui_relation = dataset.field2token_id[dataset.relation_field][dataset.ui_relation]
 zero_shot_constrained_logits_processor = ZeroShotConstrainedLogitsProcessor(
     tokenized_ckg=dataset.get_tokenized_ckg(),
     tokenized_used_ids=dataset.get_tokenized_used_ids(),
     max_sequence_length=10,  # High as sequences for zero-shot should be shorter due to StoppingCriteria trigger
     tokenizer=dataset.tokenizer,
     remove_user_tokens_from_sequences=cfg.recommender.remove_user_tokens_from_sequences,
+    tokenized_ui_relation=(
+        dataset.tokenizer.convert_tokens_to_ids(PathLanguageModelingTokenType.RELATION.token + str(ui_relation))
+    ),
 )
 zero_shot_constrained_logits_processors_list = LogitsProcessorList(
     [

@@ -192,6 +192,12 @@ def food_recommender(  # noqa: PLR0913, PLR0915
         recommender.sequence_postprocessor = zero_shot_sequence_postprocessor
         recommender.logits_processor_list = zero_shot_constrained_logits_processors_list
 
+        if previous_recommendations:
+            breakpoint()
+            previous_recommendations = []
+
+        zero_shot_constrained_logits_processors_list[0].previous_recommendations = previous_recommendations
+
         if any(
             isinstance(logit_processor, RestrictionLogitsProcessorWordLevel)
             for logit_processor in recommender.logits_processor_list
@@ -224,6 +230,7 @@ def food_recommender(  # noqa: PLR0913, PLR0915
         outputs = recommender.generate(inputs, **kwargs)
     except Exception as e:
         logger.error(f"Error during generation: {e}")
+        raise
         return None
 
     logger.info("Processing outputs to get recommendations...")
@@ -262,6 +269,8 @@ def food_recommender(  # noqa: PLR0913, PLR0915
     except Exception as e:
         logger.error(f"Error processing recommendations: {e}")
         return None
+
+    zero_shot_constrained_logits_processors_list[0].previous_recommendations = None
 
     return dict(
         recommendations=recommendations,

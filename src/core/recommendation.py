@@ -42,7 +42,7 @@ class ZeroShotConstrainedLogitsProcessor(ConstrainedLogitsProcessorWordLevel):
                 if vocab[0].startswith(PathLanguageModelingTokenType.USER.token)
             ]
         )
-        self.tokenized_ui_relation = set([tokenizer("[UI-RELATION]")])
+        self.tokenized_ui_relation = set([kwargs.pop("tokenized_ui_relation", 1)])
         super().__init__(
             tokenized_ckg,
             tokenized_used_ids,
@@ -92,12 +92,12 @@ class ZeroShotConstrainedLogitsProcessor(ConstrainedLogitsProcessorWordLevel):
 
         return scores
 
-    def process_scores_rec(self, input_ids, idx, previous_recommendations=None):
+    def process_scores_rec(self, input_ids, idx):
         """Process each score based on input length and update mask list."""
         key = self.get_current_key(input_ids, idx)
         candidate_tokens = self.get_candidates_rec(*key)
-        if previous_recommendations is not None:
-            candidate_tokens = candidate_tokens - set(previous_recommendations)
+        if self.previous_recommendations is not None:
+            candidate_tokens = candidate_tokens - set(self.previous_recommendations)
 
         if self.remove_user_tokens_from_sequences:
             # In zero-shot, we do not want explanations based on user IDs, so we remove them
@@ -174,6 +174,7 @@ class RestrictionLogitsProcessorWordLevel(ConstrainedLogitsProcessorWordLevel):
         if np.all(full_mask):
             raise RestrictionNotApplicable()
 
+        breakpoint()
         self.current_soft_restrictions = sorted(
             self.current_soft_restrictions,
             key=lambda k: len(self.tokenized_ckg.get(self.entity_mapping[k], [])),
