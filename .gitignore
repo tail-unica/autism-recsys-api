@@ -10,3 +10,9 @@ saved/
 data/
 checkpoint/
 embeddings_cache/
+
+hopwise/tests/
+hopwise/run_example/
+hopwise/run_test.sh
+hopwise/hopwise/dataset_example/
+hopwise/uv.lock
