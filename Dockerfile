@@ -18,4 +18,4 @@ RUN uv sync
 EXPOSE 8100
 
 # Run the FastAPI application with Uvicorn
-CMD ["uv", "run", "-O", "-m", "uvicorn", "src.app.main:app", "--host", "0.0.0.0", "--port", "8100"]
+CMD ["uv", "run", "python", "-O", "-m", "uvicorn", "src.app.main:app", "--host", "0.0.0.0", "--port", "8100"]

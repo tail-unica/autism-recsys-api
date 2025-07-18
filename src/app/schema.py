@@ -113,7 +113,7 @@ class InfoResponse(BaseModel):
 
 
 class RecommendationRequest(BaseModel):
-    user_id: int = Field(description="Unique identifier for the user", example=12345)
+    user_id: str = Field(description="Unique identifier for the user", example="12345")
     preferences: list[str] = Field(
         description="List of food items, ingredients, or cuisines the user likes",
         example=["pasta", "Italian cuisine", "tomatoes"],
@@ -126,11 +126,11 @@ class RecommendationRequest(BaseModel):
         description="List of specific food items to completely exclude from recommendations",
         example=["seafood", "peanuts"],
     )
-    meal_time: Optional[str] = Field(
-        default=None,
-        description="What meal the user is looking for (breakfast, lunch, dinner, snack)",
-        example="dinner",
-    )
+    # meal_time: Optional[str] = Field(
+    #     default=None,
+    #     description="What meal the user is looking for (breakfast, lunch, dinner, snack)",
+    #     example="dinner",
+    # )
     previous_recommendations: Optional[list[str]] = Field(
         default=[],
         description="List of previously recommended items to avoid repetition",
@@ -185,7 +185,7 @@ class RecommendationItem(BaseModel):
 class RecommendationResponse(BaseModel):
     """Response model for food recommendations"""
 
-    user_id: int = Field(description="Unique identifier for the user", example=12345)
+    user_id: str = Field(description="Unique identifier for the user", example="12345")
     recommendations: list[RecommendationItem] = Field(
         description="List of recommended food items with scores and metadata"
     )

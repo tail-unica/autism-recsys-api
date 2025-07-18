@@ -4,6 +4,7 @@ import src.core.main as core
 from src.app.schema import (
     AlternativeRequest,
     AlternativeResponse,
+    InfoResponse,
     RecommendationItem,
     RecommendationRequest,
     RecommendationResponse,
@@ -47,13 +48,12 @@ async def get_recommendation(request: RecommendationRequest):
 
     recommender_output = food_recommender(
         request.user_id,
-        preferences=request.preferences,
-        soft_restrictions=request.soft_restrictions,
-        hard_restrictions=request.hard_restrictions,
-        previous_recommendations=request.previous_recommendations,
-        meal_time=request.meal_time,
+        preferences=tuple(request.preferences),
+        soft_restrictions=tuple(request.soft_restrictions),
+        hard_restrictions=tuple(request.hard_restrictions),
+        previous_recommendations=tuple(request.previous_recommendations),
         recommendation_count=request.recommendation_count,
-        diversity_factor=request.diversity_factor,
+        diversity_penalty=request.diversity_factor,
     )
 
     if recommender_output is None:
@@ -65,22 +65,16 @@ async def get_recommendation(request: RecommendationRequest):
         user_id=request.user_id,
         recommendations=[
             RecommendationItem(
-                name=rec,
+                food_item=rec,
                 score=score,
                 explanation=exp,
-                ingredients=ingredients,
-                healthiness_score=health_score,
-                sustainability_score=sustain_score,
-                nutritional_values=nutri_values,
+                food_info=InfoResponse(**info),
             )
-            for rec, score, exp, ingredients, health_score, sustain_score, nutri_values in zip(
+            for rec, score, exp, info in zip(
                 recommender_output["recommendations"],
                 recommender_output["scores"],
                 recommender_output["explanations"],
-                recommender_output["ingredients"],
-                recommender_output["healthiness_scores"],
-                recommender_output["sustainability_scores"],
-                recommender_output["nutritional_values"],
+                recommender_output["recommendations_info"],
             )
         ],
         conversation_id=request.conversation_id,

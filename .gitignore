@@ -1,5 +1,5 @@
 # Saved models
-/saved*
+saved/
 *.pth
 
 .vscode/
@@ -9,3 +9,4 @@
 *venv/
 data/
 checkpoint/
+embeddings_cache/

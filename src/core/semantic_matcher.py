@@ -46,7 +46,7 @@ class HierarchicalSemanticMatcher:
             self.final_dim = self.original_dim
 
         # Storage
-        self.food_items = None
+        self.items = None
         self.embeddings = None
         self.faiss_index = None
         self.hierarchical_index = None
@@ -66,14 +66,12 @@ class HierarchicalSemanticMatcher:
         cache_name = f"{self.model_name.replace('/', '_')}_{data_identifier}_{self.final_dim}d.pkl"
         return os.path.join(self.cache_dir, cache_name)
 
-    def encode_food_items(
-        self, food_items: list[str], data_identifier: str = "food_data", force_recompute: bool = False
-    ):
+    def encode_items(self, items: list[str], data_identifier: str = "semantic_data", force_recompute: bool = False):
         """
-        Encode food items with caching and compression.
+        Encode items with caching and compression.
 
         Args:
-            food_items: List of food item names
+            items: List of item names
             data_identifier: Unique identifier for caching
             force_recompute: Whether to recompute even if cache exists
         """
@@ -85,10 +83,10 @@ class HierarchicalSemanticMatcher:
             try:
                 with open(cache_path, "rb") as f:
                     cached_data = pickle.load(f)
-                    self.food_items = cached_data["food_items"]
+                    self.items = cached_data["items"]
                     self.embeddings = cached_data["embeddings"]
 
-                if len(self.food_items) == len(food_items):
+                if len(self.items) == len(items):
                     logger.info("Cache loaded successfully")
                     self._build_indices()
                     return
@@ -96,13 +94,13 @@ class HierarchicalSemanticMatcher:
                 logger.warning(f"Cache loading failed: {e}")
 
         # Compute embeddings
-        logger.info(f"Computing embeddings for {len(food_items)} items...")
-        self.food_items = food_items
+        logger.info(f"Computing embeddings for {len(items)} items...")
+        self.items = items
 
         all_embeddings = []
-        for i in range(0, len(food_items), self.batch_size):
-            batch = food_items[i : i + self.batch_size]
-            logger.info(f"Processing batch {i // self.batch_size + 1}/{(len(food_items) - 1) // self.batch_size + 1}")
+        for i in range(0, len(items), self.batch_size):
+            batch = items[i : i + self.batch_size]
+            logger.info(f"Processing batch {i // self.batch_size + 1}/{(len(items) - 1) // self.batch_size + 1}")
 
             batch_embeddings = self.model.encode(batch, show_progress_bar=True, convert_to_numpy=True)
 
@@ -113,7 +111,7 @@ class HierarchicalSemanticMatcher:
         self.embeddings = np.vstack(all_embeddings)
 
         # Cache the results
-        cache_data = {"food_items": self.food_items, "embeddings": self.embeddings}
+        cache_data = {"items": self.items, "embeddings": self.embeddings}
 
         try:
             with open(cache_path, "wb") as f:
@@ -133,11 +131,11 @@ class HierarchicalSemanticMatcher:
         embeddings_normalized = self.embeddings.copy()
         faiss.normalize_L2(embeddings_normalized)
 
-        if self.use_hierarchical and len(self.food_items) > HierarchicalSemanticMatcher.MIN_HIERARCHICAL_ITEMS:
+        if self.use_hierarchical and len(self.items) > HierarchicalSemanticMatcher.MIN_HIERARCHICAL_ITEMS:
             # Hierarchical index for large datasets
             quantizer = faiss.IndexFlatIP(self.final_dim)
             self.faiss_index = faiss.IndexIVFFlat(
-                quantizer, self.final_dim, min(self.n_clusters, len(self.food_items) // 10)
+                quantizer, self.final_dim, min(self.n_clusters, len(self.items) // 10)
             )
 
             # Train the index
@@ -158,19 +156,19 @@ class HierarchicalSemanticMatcher:
 
     def find_similar_items(self, query: str, top_k: int = 10, max_distance: float = 0.8) -> list[tuple[str, float]]:
         """
-        Find similar food items using semantic search.
+        Find similar items using semantic search.
 
         Args:
-            query: Food item to search for
+            query: Item to search for
             top_k: Number of results to return
             max_distance: Maximum distance threshold
 
         Returns:
-            List of (food_item, cosine_distance) tuples
+            List of (item, cosine_distance) tuples
         """
         logger.info(f"Finding similar items for query: '{query}' with top_k={top_k} and max_distance={max_distance}")
         if self.faiss_index is None:
-            raise ValueError("Index not built. Call encode_food_items() first.")
+            raise ValueError("Index not built. Call encode_items() first.")
 
         # Encode query
         query_embedding = self.model.encode([query], convert_to_numpy=True)
@@ -182,29 +180,29 @@ class HierarchicalSemanticMatcher:
         logger.info("Query embedding normalized")
 
         # Search
-        distances, indices = self.faiss_index.search(query_embedding, min(top_k, len(self.food_items)))
+        distances, indices = self.faiss_index.search(query_embedding, min(top_k, len(self.items)))
         logger.info(f"Search completed. Found {len(distances[0])} candidates with cosine distances {distances[0]}")
-        print(f"Candidates: {self.food_items[indices[0]]}")
+        print(f"Candidates: {self.items[indices[0]]}")
 
         # Filter and format results
         results = []
         for dist, idx in zip(distances[0], indices[0]):
             if idx != -1 and dist <= max_distance:  # -1 indicates no result
-                results.append((self.food_items[idx], float(dist)))
+                results.append((self.items[idx], float(dist)))
         logger.info(f"Filtered results: {len(results)} items with cosine distance <= {max_distance}")
 
         return results[:top_k]
 
     def find_most_similar_item(self, query: str, max_distance: float = 0.8) -> Optional[tuple[str, float]]:
         """
-        Find the most similar food item to the query.
+        Find the most similar item to the query.
 
         Args:
-            query: Food item to search for
+            query: Item to search for
             max_distance: Maximum distance threshold
 
         Returns:
-            Tuple of (food_item, cosine_distance) or None if no match found
+            Tuple of (item, cosine_distance) or None if no match found
         """
         results = self.find_similar_items(query, top_k=1, max_distance=max_distance)
         return results[0] if results else None
@@ -218,14 +216,14 @@ class HierarchicalSemanticMatcher:
         compression_ratio = self.original_dim / self.final_dim if self.final_dim < self.original_dim else 1.0
 
         return {
-            "num_items": len(self.food_items),
+            "num_items": len(self.items),
             "embedding_dim": self.final_dim,
             "original_dim": self.original_dim,
             "compression_ratio": f"{compression_ratio:.1f}x",
             "memory_usage_mb": f"{memory_mb:.1f}",
             "index_type": (
                 "hierarchical"
-                if self.use_hierarchical and len(self.food_items) > HierarchicalSemanticMatcher.MIN_HIERARCHICAL_ITEMS
+                if self.use_hierarchical and len(self.items) > HierarchicalSemanticMatcher.MIN_HIERARCHICAL_ITEMS
                 else "flat"
             ),
         }

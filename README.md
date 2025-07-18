@@ -9,6 +9,9 @@ These instructions will help you set up and run the PHaSE-API on your local mach
 ### Prerequisites
 
 - [Docker](https://www.docker.com/products/docker-desktop) installed on your system
+- [Pretrained Weights and Dataset](https://drive.google.com/drive/folders/1Vwa2Fje6Ltn-sNo6eaZSpRhgrEviSfzW?usp=sharing) downloaded and placed at the root of the project directory. It includes two folders:
+  - `checkpoint`: Contains the pretrained model weights, the preprocessed dataset, and the tokenizer.
+  - `data`: Contains the dataset used to retrieve food information.
 
 ## Running with Docker
 

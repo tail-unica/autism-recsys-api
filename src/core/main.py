@@ -2,9 +2,29 @@ import logging
 from functools import lru_cache
 from typing import Literal, Optional
 
-from src.core import cfg, semantic_matcher
+import torch
+from hopwise.data import Interaction
+from hopwise.utils import PathLanguageModelingTokenType
+
+from src.core import (
+    cfg,
+    constrained_logits_processors_list,
+    dataset,
+    existing_user_cumulative_sequence_postprocessor,
+    kg_elements_semantic_matcher,
+    recommender,
+    zero_shot_constrained_logits_processors_list,
+    zero_shot_sequence_postprocessor,
+    # zero_shot_stop_criteria_list,
+)
 from src.core.alternative import filter_healthy_and_sustainable
-from src.core.info import get_food_info
+from src.core.info import get_food_info, get_food_semantic_matcher
+from src.core.recommendation import (
+    RestrictionLogitsProcessorWordLevel,
+    prepare_zero_shot_raw_inputs,
+    set_restrictions,
+    token2real_token,
+)
 
 logger = logging.getLogger("PHaSE API")
 
@@ -17,7 +37,6 @@ def dummy_food_recommender(  # noqa: PLR0913
     soft_restrictions: list[str] = None,
     hard_restrictions: list[str] = None,
     previous_recommendations: list[str] = None,
-    meal_time: str = None,
     recommendation_count: int = 5,
     diversity_factor: float = 0.5,
 ) -> list[str]:
@@ -52,21 +71,204 @@ def dummy_food_recommender(  # noqa: PLR0913
             "U25 interacted_with 'Pasta broccoli' has_indicator 'HIGH PROTEIN' has_indicator 'Fettuccine Alfredo'",
             "U25 interacted_with 'Pizza genovese' has_tag 'pesto' has_tag 'Pennette with basil pesto'",
         ],
-        ingredients=[
-            [("spaghetti", "100g"), ("guanciale", "50g"), ("egg", "1")],
-            [("fettuccine", "100g"), ("cream", "50ml"), ("parmesan", "20g")],
-            [("pennette", "100g"), ("basil pesto", "20g"), ("olive oil", "10ml")],
-        ],
-        healthiness_scores=[0.8, 0.7, 0.6],
-        sustainability_scores=[0.5, 0.6, 0.7],
-        nutritional_values=[
-            {"calories": 500.0, "fiber": 5.0, "sugar": 2.0, "carbs": 60.0, "protein": 15.0, "fat": 10.0},
-            {"calories": 600.0, "fiber": 3.0, "sugar": 4.0, "carbs": 70.0, "protein": 12.0, "fat": 20.0},
-            {"calories": 550.0, "fiber": 4.0, "sugar": 3.0, "carbs": 65.0, "protein": 14.0, "fat": 15.0},
+        recommendations_info=[
+            {
+                "food_item": "Spaghetti carbonara",
+                "food_item_type": "recipe",
+                "ingredients_dict": {
+                    "ingredients": ["spaghetti", "guanciale", "egg"],
+                    "quantities": ["100g", "50g", "1"],
+                },
+                "healthiness": {"score": "B", "qualitative": "Good healthiness level"},
+                "sustainability": {"score": "C", "qualitative": "Fair sustainability level"},
+                "nutritional_values": {
+                    "calories [cal]": 500,
+                    "protein [g]": 15,
+                    "carbohydrates [g]": 60,
+                    "fats [g]": 10,
+                },
+                "food_item_url": "https://www.example.com/spaghetti-carbonara",
+            },
+            {
+                "food_item": "Fettuccine alfredo",
+                "food_item_type": "recipe",
+                "ingredients_dict": {
+                    "ingredients": ["fettuccine", "cream", "parmesan"],
+                    "quantities": ["100g", "50ml", "20g"],
+                },
+                "healthiness": {"score": "C", "qualitative": "Moderate healthiness level"},
+                "sustainability": {"score": "B", "qualitative": "Good sustainability level"},
+                "nutritional_values": {
+                    "calories [cal]": 600,
+                    "protein [g]": 12,
+                    "carbohydrates [g]": 70,
+                    "fats [g]": 20,
+                },
+                "food_item_url": "https://www.example.com/fettuccine-alfredo",
+            },
+            {
+                "food_item": "Pennette with basil pesto",
+                "food_item_type": "recipe",
+                "ingredients_dict": {
+                    "ingredients": ["pennette", "basil pesto", "olive oil"],
+                    "quantities": ["100g", "20g", "10ml"],
+                },
+                "healthiness": None,
+                "sustainability": None,
+                "nutritional_values": {
+                    "calories [cal]": 550,
+                    "protein [g]": 14,
+                    "carbohydrates [g]": 65,
+                    "fats [g]": 15,
+                },
+                "food_item_url": "https://www.example.com/pennette-basil-pesto",
+            },
         ],
     )
 
     return output
+
+
+@lru_cache(maxsize=1024)
+def food_recommender(  # noqa: PLR0913, PLR0915
+    user_id: str,
+    *,
+    preferences: tuple[str] = None,
+    soft_restrictions: tuple[str] = None,
+    hard_restrictions: tuple[str] = None,
+    previous_recommendations: tuple[str] = None,
+    recommendation_count: int = 5,
+    diversity_penalty: float = 0.5,
+) -> dict:
+    """Food recommender system.
+
+    Args:
+        user_id (int): Unique identifier for the user
+        preferences (list[str], optional):
+            List of food items, ingredients, or cuisines the user likes. Defaults to None.
+        soft_restrictions (list[str], optional):
+            List of food items, ingredients, or cuisines the user dislikes. Defaults to None.
+        hard_restrictions (list[str], optional):
+            List of specific food items to completely exclude from recommendations. Defaults to None.
+        previous_recommendations (list[str], optional):
+            List of previously recommended items to avoid repetition. Defaults to None.
+        recommendation_count (int, optional): Number of recommendations to return. Defaults to 5.
+        diversity_penalty (float, optional):
+            Controls how diverse the recommendations should be (0.0-1.0). Defaults to 0.5.
+    """
+    num_beams = int(recommendation_count * 1.5) // 2 * 2 + 2  # Ensure even number of beams with ceil rounding
+    kwargs = dict(
+        max_length=recommender.token_sequence_length,
+        min_length=recommender.token_sequence_length,
+        paths_per_user=recommendation_count,
+        num_beams=num_beams,
+        num_beam_groups=num_beams // 2,
+        diversity_penalty=diversity_penalty,
+        # stopping_criteria=zero_shot_stop_criteria_list,
+        return_dict_in_generate=True,
+        output_scores=True,
+    )
+    logger.info(f"Generating recommendations with parameters: {kwargs}")
+
+    if user_id in dataset.field2id_token[dataset.uid_field]:
+        logger.info(f"User {user_id} exists in the dataset, using existing user sequence postprocessor.")
+        logger.info("Preparing raw inputs for existing user...")
+        ui_relation = dataset.field2token_id[dataset.relation_field][dataset.ui_relation]
+        raw_inputs = [
+            dataset.path_token_separator.join(
+                [
+                    dataset.tokenizer.bos_token,
+                    PathLanguageModelingTokenType.USER.token + user_id,
+                    PathLanguageModelingTokenType.RELATION.token + str(ui_relation),
+                ]
+            )
+        ]
+        recommender.sequence_postprocessor = existing_user_cumulative_sequence_postprocessor
+        recommender.logits_processor_list = constrained_logits_processors_list
+    else:
+        logger.info(f"User {user_id} does not exist in the dataset, using zero-shot sequence postprocessor.")
+        logger.info("Finding best matches for preferences and preparing raw inputs...")
+        raw_inputs = prepare_zero_shot_raw_inputs(preferences, dataset, kg_elements_semantic_matcher)
+        recommender.sequence_postprocessor = zero_shot_sequence_postprocessor
+        recommender.logits_processor_list = zero_shot_constrained_logits_processors_list
+
+        if any(
+            isinstance(logit_processor, RestrictionLogitsProcessorWordLevel)
+            for logit_processor in recommender.logits_processor_list
+        ):
+            logger.info("Setting restrictions if any...")
+            if hard_restrictions or soft_restrictions:
+                set_restrictions(
+                    hard_restrictions=hard_restrictions,
+                    soft_restrictions=soft_restrictions,
+                    kg_elements_semantic_matcher=kg_elements_semantic_matcher,
+                    zero_shot_constrained_logits_processors_list=zero_shot_constrained_logits_processors_list,
+                    logger=logger,
+                )
+
+    logger.info("Tokenizing raw inputs for recommendation generation...")
+    inputs = dataset.tokenizer(raw_inputs, return_tensors="pt", add_special_tokens=False).to(cfg.recommender.device)
+    inputs = Interaction(inputs.data)
+
+    valid_inputs_mask = torch.isin(
+        inputs["input_ids"][:, 1:], torch.tensor(dataset.tokenizer.all_special_ids, device=inputs["input_ids"].device)
+    ).squeeze()
+    if valid_inputs_mask.all():
+        logger.error("All input tokens are special tokens. Returning None.")
+        return None
+
+    inputs = inputs[torch.logical_not(valid_inputs_mask)]
+
+    logger.info(f"Executing generation with inputs: {raw_inputs}")
+    try:
+        outputs = recommender.generate(inputs, **kwargs)
+    except Exception as e:
+        logger.error(f"Error during generation: {e}")
+        return None
+
+    logger.info("Processing outputs to get recommendations...")
+    max_new_tokens = recommender.token_sequence_length - inputs["input_ids"].size(1)
+    scores, sequences = recommender.sequence_postprocessor.get_sequences(
+        outputs, max_new_tokens=max_new_tokens, previous_recommendations=previous_recommendations
+    )
+
+    # for seq in sequences:
+    #     seq[-1] = recommender.decode_path(seq[-1])
+
+    recommendation_ids = [seq[1] for seq in sequences]
+    scores = [seq[2] for seq in sequences]
+    explanations = [seq[3] for seq in sequences]
+    for idx in range(len(explanations)):
+        explanations[idx] = [token2real_token(token, dataset) for token in explanations[idx][1:]]
+
+    try:
+        if user_id not in dataset.field2id_token[dataset.uid_field]:
+            explanations = [
+                f"User {user_id} has_preference " + " ".join(exp).replace(dataset.ui_relation, "interacted_with")
+                for exp in explanations
+            ]
+
+        mapped_recommendations = dataset.field2id_token["name"][dataset.item_feat[recommendation_ids]["name"]].tolist()
+        recommendations = [" ".join(filter(lambda x: x != "[PAD]", x)) for x in mapped_recommendations]
+
+        recommendations_info = [food_info_fetcher(rec, food_item_type="recipe") for rec in recommendations]
+
+        if any(
+            isinstance(logit_processor, RestrictionLogitsProcessorWordLevel)
+            for logit_processor in recommender.logits_processor_list
+        ):
+            # Clear restrictions after generation
+            zero_shot_constrained_logits_processors_list[-1].clear_restrictions()
+    except Exception as e:
+        logger.error(f"Error processing recommendations: {e}")
+        return None
+
+    return dict(
+        recommendations=recommendations,
+        scores=scores,
+        explanations=explanations,
+        recommendations_info=recommendations_info,
+    )
 
 
 # Dummy function representing the food info fetcher
@@ -107,29 +309,17 @@ def food_info_fetcher(food_item: str, food_item_type: Optional[Literal["ingredie
     max_distance_threshold = cfg.semantic_search.max_distance_threshold
 
     # Find best match
-    best_matches = semantic_matcher.find_similar_items(
+    best_match = get_food_semantic_matcher(food_item_type=food_item_type).find_most_similar_item(
         query=food_item,
-        top_k=3,
         max_distance=max_distance_threshold,
     )
 
-    if not best_matches:
-        logger.warning(f"No matches found for food item: {food_item}")
+    if not best_match:
+        logger.warning(f"No match found for food item: {food_item}")
         return None
 
-    best_matches_names, _ = zip(*best_matches)
-    if food_item_type is not None:
-        matches_info = [get_food_info(name) for name in best_matches_names]
-        matches_info = [info for info in matches_info if info["food_item_type"] == food_item_type]
-
-        if not matches_info:
-            logger.warning(f"No matches found for food item: {food_item} of type {food_item_type}")
-            return None
-    else:
-        matches_info = [get_food_info(best_matches_names[0])]  # Get info for the best match only
-
-    best_match_name = best_matches_names[0]
-    best_match_info = matches_info[0]
+    best_match_name, _ = best_match
+    best_match_info = get_food_info(best_match_name)
 
     return {
         "food_item": best_match_name,
@@ -171,7 +361,7 @@ def food_alternative(food_item: str, k: int, food_item_type: Optional[Literal["i
 
     logger.info(f"Finding best match of {food_item} and retrieving its info")
     matched_item_info = food_info_fetcher(food_item, food_item_type=food_item_type)
-    matches = semantic_matcher.find_similar_items(
+    matches = get_food_semantic_matcher(food_item_type=food_item_type).find_similar_items(
         query=matched_item_info["food_item"],
         top_k=k + 1,  # +1 to get the matched item itself
         max_distance=max_distance_threshold,

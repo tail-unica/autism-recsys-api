@@ -1,9 +1,16 @@
 import logging
-from typing import Optional
+from typing import Literal, Optional
 
 import polars as pl
 
-from src.core import cfg, food_data
+from src.core import (
+    all_food_semantic_matcher,
+    cfg,
+    food_data,
+    ingredients_only_semantic_matcher,
+    recipes_only_semantic_matcher,
+)
+from src.core.semantic_matcher import HierarchicalSemanticMatcher
 
 logger = logging.getLogger("PHaSE API")
 
@@ -114,3 +121,22 @@ def validate_struct(df: pl.LazyFrame, struct_col: str) -> Optional[pl.Series]:
     if (df.select(pl.col(struct_col).struct.unnest()).select(pl.all_horizontal(pl.all().is_null()))).collect().item():
         return None
     return df.select(struct_col).collect().item()
+
+
+def get_food_semantic_matcher(
+    food_item_type: Optional[Literal["ingredient", "recipe"]] = None,
+) -> HierarchicalSemanticMatcher:
+    """Returns the appropriate semantic matcher based on the food item type.
+
+    Args:
+        food_item_type (str): Type of the food item ("ingredient" or "recipe").
+
+    Returns:
+        HierarchicalSemanticMatcher: The semantic matcher for the specified food item type.
+    """
+    if food_item_type == "ingredient":
+        return ingredients_only_semantic_matcher
+    elif food_item_type == "recipe":
+        return recipes_only_semantic_matcher
+    else:
+        return all_food_semantic_matcher
