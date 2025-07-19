@@ -37,6 +37,7 @@ def get_food_info(food_item: str):
 
     # If nutritional values or ingredients structs only contain None, set them to None
     nutritional_values = validate_struct(matched_row, "nutritional_values")
+    nutritional_value_groups = validate_struct(matched_row, "nutritional_value_groups")
     ingredients_dict = validate_struct(matched_row, "flat_ingredients")
 
     food_item_url = matched_row.select("recipe_url").collect().item()
@@ -47,6 +48,7 @@ def get_food_info(food_item: str):
         "healthiness": qualitative_scores_dict["healthiness"],
         "sustainability": qualitative_scores_dict["sustainability"],
         "nutritional_values": nutritional_values,
+        "nutritional_value_groups": nutritional_value_groups,
         "ingredients": ingredients_dict,
         "food_item_url": food_item_url,
     }

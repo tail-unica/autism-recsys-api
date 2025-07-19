@@ -17,6 +17,7 @@ core:
     - healthiness_score_groups
     - environmental_impact
     - nutritional_values
+    - nutritional_value_groups
     - flat_ingredients
     - recipe_url
 

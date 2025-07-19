@@ -351,7 +351,9 @@ def food_info_fetcher(food_item: str, food_item_type: Optional[Literal["ingredie
         "healthiness": best_match_info["healthiness"],
         "sustainability": best_match_info["sustainability"],
         "nutritional_values": best_match_info["nutritional_values"],
+        "nutritional_value_groups": best_match_info.get("nutritional_value_groups", None),
         "ingredients": best_match_info["ingredients"],
+        "food_item_url": best_match_info["food_item_url"],
     }
 
 

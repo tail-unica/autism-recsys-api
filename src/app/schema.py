@@ -97,6 +97,10 @@ class InfoResponse(BaseModel):
         description="Nutritional information for this food item",
         example={"calories [cal]": 450.0, "protein [g]": 12.0, "carbs [g]": 56.0, "fat [g]": 18.0},
     )
+    nutritional_value_groups: Optional[dict[str, Optional[str]]] = Field(
+        description="Nutritional value groups for this food item, if available",
+        example={"calories": "LOW", "protein": "HIGH", "carbs": "MEDIUM", "fat": "LOW"},
+    )
     ingredients: Optional[IngredientList] = Field(
         default=None,
         description="List of ingredients and their quantities for this food item",
@@ -173,6 +177,7 @@ class RecommendationItem(BaseModel):
                 score="E", qualitative="Inadequate sustainability level", CF=0.5, WF=0.3
             ),
             nutritional_values={"calories [cal]": 450.0, "protein [g]": 12.0, "carbs [g]": 56.0, "fat [g]": 18.0},
+            nutritional_value_groups={"calories": "LOW", "protein": "HIGH", "carbs": "MEDIUM", "fat": "LOW"},
             ingredients=IngredientList(
                 ingredients=["pasta", "eggs", "cheese pecorino", "black pepper"],
                 quantities=["100g", "2", "50g", "to taste"],
@@ -222,6 +227,7 @@ class AlternativeResponse(BaseModel):
                 score="E", qualitative="Inadequate sustainability level", CF=0.5, WF=0.3
             ),
             nutritional_values={"calories [cal]": 450.0, "protein [g]": 12.0, "carbs [g]": 56.0, "fat [g]": 18.0},
+            nutritional_value_groups={"calories": "LOW", "protein": "HIGH", "carbs": "MEDIUM", "fat": "LOW"},
             ingredients=IngredientList(
                 ingredients=["pasta", "eggs", "cheese pecorino", "black pepper"],
                 quantities=["100g", "2", "50g", "to taste"],
@@ -243,6 +249,7 @@ class AlternativeResponse(BaseModel):
                     score="E", qualitative="Inadequate sustainability level", CF=0.5, WF=0.3
                 ),
                 nutritional_values={"calories [cal]": 400.0, "protein [g]": 15.0, "carbs [g]": 50.0, "fat [g]": 10.0},
+                nutritional_value_groups={"calories": "LOW", "protein": "HIGH", "carbs": "MEDIUM", "fat": "LOW"},
                 ingredients=IngredientList(
                     ingredients=["pasta", "guanciale", "cheese pecorino", "black pepper"],
                     quantities=["100g", "50g", "30g", "to taste"],
@@ -261,6 +268,7 @@ class AlternativeResponse(BaseModel):
                     qualitative="Good sustainability level",
                 ),
                 nutritional_values={"calories [cal]": 500.0, "protein [g]": 10.0, "carbs [g]": 60.0, "fat [g]": 20.0},
+                nutritional_value_groups={"calories": "LOW", "protein": "HIGH", "carbs": "MEDIUM", "fat": "LOW"},
                 ingredients=IngredientList(
                     ingredients=["fettuccine", "cream", "parmesan cheese", "butter"],
                     quantities=["100g", "50ml", "30g", "20g"],
@@ -279,6 +287,7 @@ class AlternativeResponse(BaseModel):
                     qualitative="Fair sustainability level",
                 ),
                 nutritional_values={"calories [cal]": 480.0, "protein [g]": 8.0, "carbs [g]": 55.0, "fat [g]": 22.0},
+                nutritional_value_groups={"calories": "LOW", "protein": "HIGH", "carbs": "MEDIUM", "fat": "LOW"},
                 ingredients=IngredientList(
                     ingredients=["penne", "basil pesto", "olive oil", "parmesan cheese"],
                     quantities=["100g", "30g", "10ml", "20g"],
