@@ -1,4 +1,6 @@
+import logging
 import warnings
+from collections.abc import Iterable
 
 import numpy as np
 import torch
@@ -6,6 +8,8 @@ from hopwise.model.logits_processor import ConstrainedLogitsProcessorWordLevel
 from hopwise.model.sequence_postprocessor import CumulativeSequenceScorePostProcessor
 from hopwise.utils import KnowledgeEvaluationType, PathLanguageModelingTokenType
 from transformers import StoppingCriteria
+
+logger = logging.getLogger("PHaSE API")
 
 
 class RestrictionNotApplicable(RuntimeError):
@@ -43,6 +47,7 @@ class ZeroShotConstrainedLogitsProcessor(ConstrainedLogitsProcessorWordLevel):
             ]
         )
         self.tokenized_ui_relation = set([kwargs.pop("tokenized_ui_relation", 1)])
+        self.previous_recommendations = None
         super().__init__(
             tokenized_ckg,
             tokenized_used_ids,
@@ -115,8 +120,6 @@ class RestrictionLogitsProcessorWordLevel(ConstrainedLogitsProcessorWordLevel):
         self,
         tokenized_ckg,
         tokenizer,
-        entity_mapping,
-        item_num,
         propagate_connected_entities=True,
         mask_cache_size=3 * 10**4,
         pos_candidates_cache_size=1 * 10**5,
@@ -133,8 +136,6 @@ class RestrictionLogitsProcessorWordLevel(ConstrainedLogitsProcessorWordLevel):
             task=task,
             **kwargs,
         )
-        self.entity_mapping = entity_mapping
-        self.item_num = item_num
         self.propagate_connected_entities = propagate_connected_entities
 
         self.current_hard_restrictions = None
@@ -174,10 +175,9 @@ class RestrictionLogitsProcessorWordLevel(ConstrainedLogitsProcessorWordLevel):
         if np.all(full_mask):
             raise RestrictionNotApplicable()
 
-        breakpoint()
         self.current_soft_restrictions = sorted(
             self.current_soft_restrictions,
-            key=lambda k: len(self.tokenized_ckg.get(self.entity_mapping[k], [])),
+            key=lambda k: len(self.tokenized_ckg.get(k, [])),
             reverse=True,
         )
 
@@ -201,22 +201,13 @@ class RestrictionLogitsProcessorWordLevel(ConstrainedLogitsProcessorWordLevel):
         connected_entities = set()
         for entity_set in self.tokenized_ckg[token_id].values():
             connected_entities.update(entity_set if isinstance(entity_set, (list, set)) else [entity_set])
-        connected_entities = list(
-            set(connected_entities)
-        )  # .sorted()  # l'ordine è temporaneo, serve solo a render più leggibile lo schifo
+        connected_entities = list(set(connected_entities))
 
         return connected_entities
 
-    def gen_banmask_from_key(self, key):
+    def gen_banmask_from_key(self, token_id):
         mask = np.zeros(len(self.tokenizer), dtype=bool)
 
-        id_interno = self.entity_mapping[key]
-        if id_interno < self.item_num:
-            token = PathLanguageModelingTokenType.ITEM.value + str(id_interno)
-        else:
-            token = PathLanguageModelingTokenType.ENTITY.value + str(id_interno)
-
-        token_id = self.tokenizer.convert_tokens_to_ids(token)
         mask[token_id] = True
 
         if token_id in self.tokenized_ckg and self.propagate_connected_entities:
@@ -361,40 +352,36 @@ def prepare_zero_shot_raw_inputs(preferences, dataset, kg_elements_semantic_matc
     return raw_inputs
 
 
-def set_restrictions(
-    hard_restrictions,
-    soft_restrictions,
-    kg_elements_semantic_matcher,
-    zero_shot_constrained_logits_processors_list,
-    logger,
-):
-    matched_hard_restrictions = []
-    matched_soft_restrictions = []
+def match_elements(elements, kg_elements_semantic_matcher, entity_mapping, dataset_for_tokenization=None):
+    matched_elements = []
 
-    if hard_restrictions:
-        for restriction in hard_restrictions:
-            matched_element = kg_elements_semantic_matcher.find_most_similar_item(restriction, max_distance=1.0)
-            if matched_element is None:
-                logger.warning(f"No match found for hard restriction: {restriction}")
+    if elements is None:
+        return None
+
+    elements = elements if isinstance(elements, Iterable) else [elements]
+
+    if elements:
+        for el in elements:
+            match = kg_elements_semantic_matcher.find_most_similar_item(el, max_distance=1.0)
+            if match is None:
+                logger.warning(f"No match found for KG element: {el}")
             else:
-                match, _ = matched_element
-                matched_hard_restrictions.append(match)
-        matched_hard_restrictions = list(set(matched_hard_restrictions))  # Remove duplicates
+                match, _ = match
+                mapped_match = entity_mapping.get(match, match)
+                logger.info(f"Matched '{el}' to '{match}' with mapped value '{mapped_match}'")
 
-    if soft_restrictions:
-        for restriction in soft_restrictions:
-            matched_element = kg_elements_semantic_matcher.find_most_similar_item(restriction, max_distance=1.0)
-            if matched_element is None:
-                logger.warning(f"No match found for soft restriction: {restriction}")
-            else:
-                match, _ = matched_element
-                matched_soft_restrictions.append(match)
-        matched_soft_restrictions = list(set(matched_soft_restrictions))  # Remove duplicates
+                if dataset_for_tokenization is not None and isinstance(mapped_match, int):
+                    if mapped_match < dataset_for_tokenization.item_num:
+                        token = PathLanguageModelingTokenType.ITEM.token + str(mapped_match)
+                    else:
+                        token = PathLanguageModelingTokenType.ENTITY.token + str(mapped_match)
 
-    zero_shot_constrained_logits_processors_list[-1].set_restrictions(
-        hard_restrictions=matched_hard_restrictions,
-        soft_restrictions=matched_soft_restrictions,
-    )
+                    mapped_match = dataset_for_tokenization.tokenizer.convert_tokens_to_ids(token)
+
+                matched_elements.append(mapped_match)
+        matched_elements = list(set(matched_elements))  # Remove duplicates
+
+    return matched_elements
 
 
 def token2real_token(token, dataset):

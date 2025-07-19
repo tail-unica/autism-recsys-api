@@ -21,8 +21,8 @@ from src.core.alternative import filter_healthy_and_sustainable
 from src.core.info import get_food_info, get_food_semantic_matcher
 from src.core.recommendation import (
     RestrictionLogitsProcessorWordLevel,
+    match_elements,
     prepare_zero_shot_raw_inputs,
-    set_restrictions,
     token2real_token,
 )
 
@@ -192,11 +192,15 @@ def food_recommender(  # noqa: PLR0913, PLR0915
         recommender.sequence_postprocessor = zero_shot_sequence_postprocessor
         recommender.logits_processor_list = zero_shot_constrained_logits_processors_list
 
-        # if previous_recommendations:
-        #     breakpoint()
-        #     previous_recommendations = []
+        if previous_recommendations:
+            matched_previous_recommendations = match_elements(
+                elements=previous_recommendations,
+                kg_elements_semantic_matcher=kg_elements_semantic_matcher,
+                entity_mapping=dataset.field2token_id["entity_id"],
+                dataset_for_tokenization=dataset,
+            )
 
-        zero_shot_constrained_logits_processors_list[0].previous_recommendations = previous_recommendations
+            zero_shot_constrained_logits_processors_list[0].previous_recommendations = matched_previous_recommendations
 
         if any(
             isinstance(logit_processor, RestrictionLogitsProcessorWordLevel)
@@ -204,13 +208,25 @@ def food_recommender(  # noqa: PLR0913, PLR0915
         ):
             logger.info("Setting restrictions if any...")
             if hard_restrictions or soft_restrictions:
-                set_restrictions(
-                    hard_restrictions=hard_restrictions,
-                    soft_restrictions=soft_restrictions,
+                matched_hard_restrictions = match_elements(
+                    elements=hard_restrictions,
                     kg_elements_semantic_matcher=kg_elements_semantic_matcher,
-                    zero_shot_constrained_logits_processors_list=zero_shot_constrained_logits_processors_list,
-                    logger=logger,
+                    entity_mapping=dataset.field2token_id["entity_id"],
+                    dataset_for_tokenization=dataset,
                 )
+
+                matched_soft_restrictions = match_elements(
+                    elements=soft_restrictions,
+                    kg_elements_semantic_matcher=kg_elements_semantic_matcher,
+                    entity_mapping=dataset.field2token_id["entity_id"],
+                    dataset_for_tokenization=dataset,
+                )
+
+                if matched_hard_restrictions or matched_soft_restrictions:
+                    zero_shot_constrained_logits_processors_list[-1].set_restrictions(
+                        hard_restrictions=matched_hard_restrictions,
+                        soft_restrictions=matched_soft_restrictions,
+                    )
 
     logger.info("Tokenizing raw inputs for recommendation generation...")
     inputs = dataset.tokenizer(raw_inputs, return_tensors="pt", add_special_tokens=False).to(cfg.recommender.device)

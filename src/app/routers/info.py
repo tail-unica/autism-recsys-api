@@ -21,7 +21,6 @@ async def get_info(
 
     **food_item**: Name of the food item (recipe or ingredient) to get information about
     """
-    breakpoint()
     if hasattr(core, "food_info_fetcher"):
         food_info_fetcher = core.food_info_fetcher
     else:

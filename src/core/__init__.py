@@ -124,8 +124,6 @@ constrained_logits_processors_list = recommender.logits_processor_list
 zero_shot_restriction_logits_processor = RestrictionLogitsProcessorWordLevel(
     tokenized_ckg=dataset.get_tokenized_ckg(),
     tokenizer=dataset.tokenizer,
-    entity_mapping=dataset.field2id_token["entity_id"],
-    item_num=dataset.item_num,
     propagate_connected_entities=cfg.recommender.propagate_connected_entities,
 )
 
@@ -143,7 +141,7 @@ zero_shot_constrained_logits_processor = ZeroShotConstrainedLogitsProcessor(
 zero_shot_constrained_logits_processors_list = LogitsProcessorList(
     [
         zero_shot_constrained_logits_processor,
-        # zero_shot_restriction_logits_processor,
+        zero_shot_restriction_logits_processor,
     ]
 )
 # zero_shot_stop_criteria_list = StoppingCriteriaList([
