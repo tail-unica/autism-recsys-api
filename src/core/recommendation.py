@@ -326,24 +326,17 @@ class ZeroShotCriteria(StoppingCriteria):
         return torch.tensor(reached_item, device=input_ids.device)
 
 
-def prepare_zero_shot_raw_inputs(preferences, dataset, kg_elements_semantic_matcher):
-    matched_preferences = []
-    preferences = preferences or []
-    for pref in preferences:
-        matched_KG_element = kg_elements_semantic_matcher.find_most_similar_item(query=pref)
-        match, _ = matched_KG_element
-        matched_preferences.append(match)
-
+def prepare_zero_shot_raw_inputs(matched_preferences, dataset):
     raw_inputs = [
         dataset.path_token_separator.join(
             [
                 dataset.tokenizer.bos_token,
                 (
                     PathLanguageModelingTokenType.ITEM.token
-                    if pref in dataset.entity2item
+                    if dataset.field2id_token[dataset.entity_field][pref] in dataset.entity2item
                     else PathLanguageModelingTokenType.ENTITY.token
                 )
-                + str(dataset.field2token_id[dataset.entity_field][pref]),
+                + str(pref),
             ]
         )
         for pref in matched_preferences
@@ -353,6 +346,11 @@ def prepare_zero_shot_raw_inputs(preferences, dataset, kg_elements_semantic_matc
 
 
 def match_elements(elements, kg_elements_semantic_matcher, entity_mapping, dataset_for_tokenization=None):
+    """
+    Match elements to the most similar items in the knowledge graph using semantic matching.
+    Performs a double match: first for the element itself, then for the tag prefixed with "tag.",
+    due to the semantich matcher often ignoring tags.
+    """
     matched_elements = []
 
     if elements is None:
@@ -363,10 +361,19 @@ def match_elements(elements, kg_elements_semantic_matcher, entity_mapping, datas
     if elements:
         for el in elements:
             match = kg_elements_semantic_matcher.find_most_similar_item(el, max_distance=1.0)
-            if match is None:
+            tag_match = kg_elements_semantic_matcher.find_most_similar_item("tag." + el, max_distance=1.0)
+            if match is None and tag_match is None:
                 logger.warning(f"No match found for KG element: {el}")
             else:
+                if match is None:
+                    match = tag_match
+                elif tag_match is not None:
+                    _, match_dist = match
+                    _, tag_match_dist = tag_match
+                    if tag_match_dist < match_dist:
+                        match = tag_match
                 match, _ = match
+
                 mapped_match = entity_mapping.get(match, match)
                 logger.info(f"Matched '{el}' to '{match}' with mapped value '{mapped_match}'")
 

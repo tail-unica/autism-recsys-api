@@ -130,7 +130,7 @@ def dummy_food_recommender(  # noqa: PLR0913
 
 
 @lru_cache(maxsize=1024)
-def food_recommender(  # noqa: PLR0913, PLR0915
+def food_recommender(  # noqa: PLR0912, PLR0913, PLR0915
     user_id: str,
     *,
     preferences: tuple[str] = None,
@@ -188,7 +188,20 @@ def food_recommender(  # noqa: PLR0913, PLR0915
     else:
         logger.info(f"User {user_id} does not exist in the dataset, using zero-shot sequence postprocessor.")
         logger.info("Finding best matches for preferences and preparing raw inputs...")
-        raw_inputs = prepare_zero_shot_raw_inputs(preferences, dataset, kg_elements_semantic_matcher)
+        if not preferences:
+            logger.error("No preferences provided for zero-shot recommendation.")
+            return None
+        matched_preferences = match_elements(
+            elements=preferences,
+            kg_elements_semantic_matcher=kg_elements_semantic_matcher,
+            entity_mapping=dataset.field2token_id[dataset.entity_field],
+            dataset_for_tokenization=None,
+        )
+        if not matched_preferences:
+            logger.error("No valid KG elements matching provided preferences for zero-shot recommendation.")
+            return None
+        raw_inputs = prepare_zero_shot_raw_inputs(matched_preferences, dataset)
+
         recommender.sequence_postprocessor = zero_shot_sequence_postprocessor
         recommender.logits_processor_list = zero_shot_constrained_logits_processors_list
 
@@ -196,7 +209,7 @@ def food_recommender(  # noqa: PLR0913, PLR0915
             matched_previous_recommendations = match_elements(
                 elements=previous_recommendations,
                 kg_elements_semantic_matcher=kg_elements_semantic_matcher,
-                entity_mapping=dataset.field2token_id["entity_id"],
+                entity_mapping=dataset.field2token_id[dataset.entity_field],
                 dataset_for_tokenization=dataset,
             )
 
@@ -234,12 +247,15 @@ def food_recommender(  # noqa: PLR0913, PLR0915
 
     valid_inputs_mask = torch.isin(
         inputs["input_ids"][:, 1:], torch.tensor(dataset.tokenizer.all_special_ids, device=inputs["input_ids"].device)
-    ).squeeze()
+    ).squeeze(dim=1)
     if valid_inputs_mask.all():
         logger.error("All input tokens are special tokens. Returning None.")
         return None
 
     inputs = inputs[torch.logical_not(valid_inputs_mask)]
+    # TODO: the number of final sequences depend on the number of valid inputs, not on the recommendation count
+    # so for each sequence we should generate recommendation_count / len(inputs) recommendations
+    # with a minimum of 1 for each input
 
     logger.info(f"Executing generation with inputs: {raw_inputs}")
     try:
@@ -250,12 +266,15 @@ def food_recommender(  # noqa: PLR0913, PLR0915
 
     logger.info("Processing outputs to get recommendations...")
     max_new_tokens = recommender.token_sequence_length - inputs["input_ids"].size(1)
-    scores, sequences = recommender.sequence_postprocessor.get_sequences(
+    _, sequences = recommender.sequence_postprocessor.get_sequences(
         outputs, max_new_tokens=max_new_tokens, previous_recommendations=previous_recommendations
     )
 
     # for seq in sequences:
     #     seq[-1] = recommender.decode_path(seq[-1])
+
+    top_rec_index = sorted(range(len(sequences)), key=lambda i: sequences[i][2], reverse=True)[:recommendation_count]
+    sequences = [sequences[i] for i in top_rec_index]
 
     recommendation_ids = [seq[1] for seq in sequences]
     scores = [seq[2] for seq in sequences]

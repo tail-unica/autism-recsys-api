@@ -188,7 +188,13 @@ class HierarchicalSemanticMatcher:
         results = []
         for dist, idx in zip(distances[0], indices[0]):
             if idx != -1 and dist <= max_distance:  # -1 indicates no result
-                results.append((self.items[idx], float(dist)))
+                ######################
+                # Code present to avoid re-training the model, remove if "user_constraint." in not KG tag entities
+                item = self.items[idx]
+                if item and item.startswith("tag."):
+                    item = "user_constraint." + item
+                ######################
+                results.append((item, float(dist)))
         logger.info(f"Filtered results: {len(results)} items with cosine distance <= {max_distance}")
 
         return results[:top_k]
