@@ -110,6 +110,25 @@ class ZeroShotConstrainedLogitsProcessor(ConstrainedLogitsProcessorWordLevel):
 
         return key, list(candidate_tokens)
 
+    def get_candidates_rec(self, key1, key2=None):
+        """
+        :param key1:
+        :param key2: if key2 is not None, it returns entity candidates, otherwise relation candidates
+        """
+        if key1 in self.tokenized_ckg:
+            if key2 is not None and key2 in self.tokenized_ckg[key1]:
+                # return tail given head + relation
+                return self.tokenized_ckg[key1][key2]
+            else:
+                # return relations given head
+                return set(self.tokenized_ckg[key1].keys())
+        else:
+            # If key1 is not in tokenized_ckg, return all keys as candidates. Bad sequence will be filtered out later.
+            return set(self.tokenized_ckg.keys())
+            # raise ValueError(
+            #     f"Key {key1} ('{self.tokenizer.convert_ids_to_tokens(key1)}') not found in tokenized_ckg"
+            # )
+
 
 class RestrictionLogitsProcessorWordLevel(ConstrainedLogitsProcessorWordLevel):
     """
@@ -368,9 +387,9 @@ def match_elements(elements, kg_elements_semantic_matcher, entity_mapping, datas
                 if match is None:
                     match = tag_match
                 elif tag_match is not None:
-                    _, match_dist = match
+                    match_name, match_dist = match
                     _, tag_match_dist = tag_match
-                    if tag_match_dist < match_dist:
+                    if tag_match_dist < match_dist and not match_name.startswith("indicator."):  # Indicator priority
                         match = tag_match
                 match, _ = match
 

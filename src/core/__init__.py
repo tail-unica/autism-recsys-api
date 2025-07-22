@@ -158,10 +158,6 @@ kg_elements_semantic_matcher = HierarchicalSemanticMatcher(
 )
 
 kg_elements = dataset.field2id_token[dataset.entity_field][dataset.item_num :]  # skip items ids
-######################
-# Code present to avoid re-training the model, remove if "user_constraint." not in KG tag entities
-kg_elements = [el.replace("user_constraint.", "") for el in kg_elements]
-######################
 kg_elements_semantic_matcher.encode_items(
     np.concatenate([list(dataset.entity2item.keys()), kg_elements]),
     data_identifier="kg_elements_data",

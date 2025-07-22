@@ -32,6 +32,13 @@ docker build -t phase-api:latest .
 docker run -p 8100:8100 phase-api:latest
 ```
 
+GPU support is enabled by default, enabled by using the following command (if it doesn't work, ensure you have the NVIDIA Container Toolkit installed):
+
+```bash
+docker run --gpus all -p 8100:8100 phase-api:latest
+docker run --gpus '"device=1"' -p 8100:8100 phase-api:latest  # to use a specific GPU
+```
+
 The API will now be accessible at [http://localhost:8100](http://localhost:8100)
 
 ## API Documentation

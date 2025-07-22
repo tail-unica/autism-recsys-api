@@ -1,6 +1,6 @@
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PositiveInt
 
 
 class IngredientList(BaseModel):
@@ -140,7 +140,7 @@ class RecommendationRequest(BaseModel):
         description="List of previously recommended items to avoid repetition",
         example=["spaghetti carbonara", "chicken parmesan"],
     )
-    recommendation_count: Optional[int] = Field(
+    recommendation_count: Optional[PositiveInt] = Field(
         default=5, description="Number of recommendations to return", example=3
     )
     diversity_factor: Optional[float] = Field(
