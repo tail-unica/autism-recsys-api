@@ -8,6 +8,7 @@ RUN sh /uv-installer.sh && rm /uv-installer.sh
 ENV PATH="/root/.local/bin/:$PATH"
 
 ADD . /app
+ADD checkpoint /app/checkpoint
 
 WORKDIR /app
 

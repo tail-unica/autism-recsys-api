@@ -35,7 +35,7 @@ semantic_search:
 recommender:
   model_name: "PEARLM"
   device: "cuda"  # or "cpu"
-  hopwise_checkpoint_file: "checkpoint/hopwise-distilgpt2-PEARLM-Jul-16-2025_22-37-45.pth"
+  hopwise_checkpoint_file: "checkpoint/hopwise-distilgpt2-PEARLM-Jul-22-2025_15-47-14.pth"
   recommender_data_path: "preprocessing/hummus_rec_data/no_members_attributes/hummus"
   diversity_factor: 0.5
   propagate_connected_entities: true  # If true, entities connected with restricted KG elements will also be restricted

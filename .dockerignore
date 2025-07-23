@@ -9,3 +9,11 @@ Dockerfile
 .git
 .gitignore
 .vscode
+embeddings_cache/
+*.cache
+preprocessing/raw_data/
+logs/
+dist/
+
+wee
+convergenza_conversational_recommender_PHASE.md
