@@ -1,6 +1,7 @@
 data:
   data_dir: "data"
   parquet_file: "phase_recipes.parquet"
+  recommender_dataset: "hummus"
 
 core:
   healthiness_metric: "nutri_group"
@@ -36,7 +37,6 @@ recommender:
   model_name: "PEARLM"
   device: "cuda"  # or "cpu"
   hopwise_checkpoint_file: "checkpoint/hopwise-distilgpt2-PEARLM-Jul-22-2025_15-47-14.pth"
-  recommender_data_path: "preprocessing/hummus_rec_data/no_members_attributes/hummus"
   diversity_factor: 0.5
   propagate_connected_entities: true  # If true, entities connected with restricted KG elements will also be restricted
   compile_mode: "default"  # Options: "default", "reduce-overhead", "max-autotune"

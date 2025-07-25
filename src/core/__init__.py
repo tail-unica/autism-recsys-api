@@ -94,7 +94,7 @@ logger.info("Loading checkpoint...")
 checkpoint = torch.load(cfg.recommender.hopwise_checkpoint_file, weights_only=False)
 config = checkpoint["config"]
 config["checkpoint_dir"] = os.path.dirname(cfg.recommender.hopwise_checkpoint_file)
-config["data_path"] = cfg.recommender.recommender_data_path
+config["data_path"] = os.path.join(data_dir, cfg.data.recommender_dataset)
 config["load_col"]["item"] = ["recipe_id", "name", "description"]
 config._set_env_behavior()
 
