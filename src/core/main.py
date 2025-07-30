@@ -156,13 +156,14 @@ def food_recommender(  # noqa: PLR0912, PLR0913, PLR0915
         diversity_penalty (float, optional):
             Controls how diverse the recommendations should be (0.0-1.0). Defaults to 0.5.
     """
-    num_beams = int(recommendation_count * 1.5) // 2 * 2 + 2  # Ensure even number of beams with ceil rounding
+    # Ensure even number of beams with ceil rounding
+    num_beams = int(recommendation_count * 1.5) // 2 * 2 + 2
     kwargs = dict(
         max_length=recommender.token_sequence_length,
         min_length=recommender.token_sequence_length,
         paths_per_user=recommendation_count,
         num_beams=num_beams,
-        num_beam_groups=num_beams // 2,
+        num_beam_groups=max(2, num_beams // 2),
         diversity_penalty=diversity_penalty,
         # stopping_criteria=zero_shot_stop_criteria_list,
         return_dict_in_generate=True,
