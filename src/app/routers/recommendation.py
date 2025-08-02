@@ -36,6 +36,9 @@ async def get_recommendation(request: RecommendationRequest):
 
     **diversity_factor**: Controls how diverse the recommendations should be (0.0-1.0)
 
+    **restrict_preference_graph**: Whether to restrict the preference graph to only include items
+    that are directly related to the user's preferences
+
     **conversation_id**: Identifier for the conversation these recommendations are associated with
     """
     if hasattr(core, "food_recommender"):
