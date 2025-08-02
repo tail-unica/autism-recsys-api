@@ -146,6 +146,11 @@ class RecommendationRequest(BaseModel):
     diversity_factor: Optional[float] = Field(
         default=0.5, description="Controls how diverse the recommendations should be (0.0-1.0)", example=0.7
     )
+    restrict_preference_graph: Optional[bool] = Field(
+        default=False,
+        description="Whether to restrict the preference graph to only include items matching all user's preferences",
+        example=True,
+    )
     conversation_id: Optional[str] = Field(
         default=None,
         description="Identifier for the conversation these recommendations are associated with",

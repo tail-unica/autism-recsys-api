@@ -36,11 +36,12 @@ semantic_search:
 recommender:
   model_name: "PEARLM"
   device: "cuda"  # or "cpu"
-  hopwise_checkpoint_file: "checkpoint/hopwise-distilgpt2-PEARLM-Jul-22-2025_15-47-14.pth"
-  diversity_factor: 0.5
+  hopwise_checkpoint_file: "checkpoint/hopwise-distilgpt2-PEARLM-Jul-31-2025_19-44-04.pth"
+  diversity_factor: 0.3
   propagate_connected_entities: true  # If true, entities connected with restricted KG elements will also be restricted
   compile_mode: "default"  # Options: "default", "reduce-overhead", "max-autotune"
   remove_user_tokens_from_sequences: true  # If true, user tokens will be removed from sequences in zero-shot recommendation
+  tag_offset: 0.1  # Offset for accepting tag matching vs other matching in zero-shot recommendation
 
 api:
   host: "0.0.0.0"

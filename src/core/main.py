@@ -4,7 +4,6 @@ from typing import Literal, Optional
 
 import torch
 from hopwise.data import Interaction
-from hopwise.utils import PathLanguageModelingTokenType
 
 from src.core import (
     cfg,
@@ -20,10 +19,9 @@ from src.core import (
 from src.core.alternative import filter_healthy_and_sustainable
 from src.core.info import get_food_info, get_food_semantic_matcher
 from src.core.recommendation import (
-    RestrictionLogitsProcessorWordLevel,
-    match_elements,
-    prepare_zero_shot_raw_inputs,
-    token2real_token,
+    prepare_recommender_and_raw_inputs,
+    reset_logits_processors,
+    unpack_recommendation_sequences_tuples,
 )
 
 logger = logging.getLogger("PHaSE API")
@@ -130,7 +128,7 @@ def dummy_food_recommender(  # noqa: PLR0913
 
 
 @lru_cache(maxsize=1024)
-def food_recommender(  # noqa: PLR0912, PLR0913, PLR0915
+def food_recommender(  # noqa: PLR0913
     user_id: str,
     *,
     preferences: tuple[str] = None,
@@ -139,6 +137,7 @@ def food_recommender(  # noqa: PLR0912, PLR0913, PLR0915
     previous_recommendations: tuple[str] = None,
     recommendation_count: int = 5,
     diversity_penalty: float = 0.5,
+    restrict_preference_graph: bool = False,
 ) -> dict:
     """Food recommender system.
 
@@ -155,13 +154,17 @@ def food_recommender(  # noqa: PLR0912, PLR0913, PLR0915
         recommendation_count (int, optional): Number of recommendations to return. Defaults to 5.
         diversity_penalty (float, optional):
             Controls how diverse the recommendations should be (0.0-1.0). Defaults to 0.5.
+        restrict_preference_graph (bool, optional):
+            Restrict the KG to only the subgraph derived from combining preferences ego-graph. Defaults to False.
     """
+    adjusted_recommendation_count = int(recommendation_count * 2)  # Adjust to ensure enough candidates
+
     # Ensure even number of beams with ceil rounding
-    num_beams = int(recommendation_count * 1.5) // 2 * 2 + 2
+    num_beams = int(adjusted_recommendation_count * 1.5) // 2 * 2 + 2
     kwargs = dict(
         max_length=recommender.token_sequence_length,
         min_length=recommender.token_sequence_length,
-        paths_per_user=recommendation_count,
+        paths_per_user=adjusted_recommendation_count,
         num_beams=num_beams,
         num_beam_groups=max(2, num_beams // 2),
         diversity_penalty=diversity_penalty,
@@ -171,76 +174,22 @@ def food_recommender(  # noqa: PLR0912, PLR0913, PLR0915
     )
     logger.info(f"Generating recommendations with parameters: {kwargs}")
 
-    if user_id in dataset.field2id_token[dataset.uid_field]:
-        logger.info(f"User {user_id} exists in the dataset, using existing user sequence postprocessor.")
-        logger.info("Preparing raw inputs for existing user...")
-        ui_relation = dataset.field2token_id[dataset.relation_field][dataset.ui_relation]
-        raw_inputs = [
-            dataset.path_token_separator.join(
-                [
-                    dataset.tokenizer.bos_token,
-                    PathLanguageModelingTokenType.USER.token + user_id,
-                    PathLanguageModelingTokenType.RELATION.token + str(ui_relation),
-                ]
-            )
-        ]
-        recommender.sequence_postprocessor = existing_user_cumulative_sequence_postprocessor
-        recommender.logits_processor_list = constrained_logits_processors_list
-    else:
-        logger.info(f"User {user_id} does not exist in the dataset, using zero-shot sequence postprocessor.")
-        logger.info("Finding best matches for preferences and preparing raw inputs...")
-        if not preferences:
-            logger.error("No preferences provided for zero-shot recommendation.")
-            return None
-        matched_preferences = match_elements(
-            elements=preferences,
-            kg_elements_semantic_matcher=kg_elements_semantic_matcher,
-            entity_mapping=dataset.field2token_id[dataset.entity_field],
-            dataset_for_tokenization=None,
-        )
-        if not matched_preferences:
-            logger.error("No valid KG elements matching provided preferences for zero-shot recommendation.")
-            return None
-        raw_inputs = prepare_zero_shot_raw_inputs(matched_preferences, dataset)
-
-        recommender.sequence_postprocessor = zero_shot_sequence_postprocessor
-        recommender.logits_processor_list = zero_shot_constrained_logits_processors_list
-
-        if previous_recommendations:
-            matched_previous_recommendations = match_elements(
-                elements=previous_recommendations,
-                kg_elements_semantic_matcher=kg_elements_semantic_matcher,
-                entity_mapping=dataset.field2token_id[dataset.entity_field],
-                dataset_for_tokenization=dataset,
-            )
-
-            zero_shot_constrained_logits_processors_list[0].previous_recommendations = matched_previous_recommendations
-
-        if any(
-            isinstance(logit_processor, RestrictionLogitsProcessorWordLevel)
-            for logit_processor in recommender.logits_processor_list
-        ):
-            logger.info("Setting restrictions if any...")
-            if hard_restrictions or soft_restrictions:
-                matched_hard_restrictions = match_elements(
-                    elements=hard_restrictions,
-                    kg_elements_semantic_matcher=kg_elements_semantic_matcher,
-                    entity_mapping=dataset.field2token_id["entity_id"],
-                    dataset_for_tokenization=dataset,
-                )
-
-                matched_soft_restrictions = match_elements(
-                    elements=soft_restrictions,
-                    kg_elements_semantic_matcher=kg_elements_semantic_matcher,
-                    entity_mapping=dataset.field2token_id["entity_id"],
-                    dataset_for_tokenization=dataset,
-                )
-
-                if matched_hard_restrictions or matched_soft_restrictions:
-                    zero_shot_constrained_logits_processors_list[-1].set_restrictions(
-                        hard_restrictions=matched_hard_restrictions,
-                        soft_restrictions=matched_soft_restrictions,
-                    )
+    raw_inputs = prepare_recommender_and_raw_inputs(
+        user_id,
+        dataset,
+        recommender,
+        kg_elements_semantic_matcher,
+        existing_user_cumulative_sequence_postprocessor,
+        constrained_logits_processors_list,
+        zero_shot_constrained_logits_processors_list,
+        zero_shot_sequence_postprocessor,
+        preferences=preferences,
+        previous_recommendations=previous_recommendations,
+        hard_restrictions=hard_restrictions,
+        soft_restrictions=soft_restrictions,
+        restrict_preference_graph=restrict_preference_graph,
+        tag_offset=cfg.recommender.tag_offset,
+    )
 
     logger.info("Tokenizing raw inputs for recommendation generation...")
     inputs = dataset.tokenizer(raw_inputs, return_tensors="pt", add_special_tokens=False).to(cfg.recommender.device)
@@ -276,36 +225,19 @@ def food_recommender(  # noqa: PLR0912, PLR0913, PLR0915
 
     top_rec_index = sorted(range(len(sequences)), key=lambda i: sequences[i][2], reverse=True)[:recommendation_count]
     sequences = [sequences[i] for i in top_rec_index]
-
-    recommendation_ids = [seq[1] for seq in sequences]
-    scores = [seq[2] for seq in sequences]
-    explanations = [seq[3] for seq in sequences]
-    for idx in range(len(explanations)):
-        explanations[idx] = [token2real_token(token, dataset) for token in explanations[idx][1:]]
+    unpacked_sequences = unpack_recommendation_sequences_tuples(sequences, dataset, user_id)
+    if unpacked_sequences is None:
+        return None
+    else:
+        scores, recommendations, explanations = unpacked_sequences
 
     try:
-        if user_id not in dataset.field2id_token[dataset.uid_field]:
-            explanations = [
-                f"User {user_id} has_preference " + " ".join(exp).replace(dataset.ui_relation, "interacted_with")
-                for exp in explanations
-            ]
-
-        mapped_recommendations = dataset.field2id_token["name"][dataset.item_feat[recommendation_ids]["name"]].tolist()
-        recommendations = [" ".join(filter(lambda x: x != "[PAD]", x)) for x in mapped_recommendations]
-
         recommendations_info = [food_info_fetcher(rec, food_item_type="recipe") for rec in recommendations]
-
-        if any(
-            isinstance(logit_processor, RestrictionLogitsProcessorWordLevel)
-            for logit_processor in recommender.logits_processor_list
-        ):
-            # Clear restrictions after generation
-            zero_shot_constrained_logits_processors_list[-1].clear_restrictions()
     except Exception as e:
-        logger.error(f"Error processing recommendations: {e}")
+        logger.error(f"Error fetching food info: {e}")
         return None
 
-    zero_shot_constrained_logits_processors_list[0].previous_recommendations = None
+    reset_logits_processors(recommender.logits_processor_list)
 
     return dict(
         recommendations=recommendations,

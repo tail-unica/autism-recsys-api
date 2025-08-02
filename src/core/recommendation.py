@@ -1,5 +1,4 @@
 import logging
-import warnings
 from collections.abc import Iterable
 
 import numpy as np
@@ -156,37 +155,43 @@ class RestrictionLogitsProcessorWordLevel(ConstrainedLogitsProcessorWordLevel):
             **kwargs,
         )
         self.propagate_connected_entities = propagate_connected_entities
+        self.tokenized_entities = [
+            vocab[1]
+            for vocab in tokenizer.get_vocab().items()
+            if vocab[0].startswith(PathLanguageModelingTokenType.ENTITY.token)
+            or vocab[0].startswith(PathLanguageModelingTokenType.ITEM.token)
+        ]
 
-        self.current_hard_restrictions = None
-        self.current_soft_restrictions = None
+        self.current_restricted_candidates = []
+        self.current_hard_restrictions = []
+        self.current_soft_restrictions = []
 
-    def set_restrictions(self, hard_restrictions=None, soft_restrictions=None):
+    def set_restrictions(self, restricted_candidates=None, hard_restrictions=None, soft_restrictions=None):
         """
         Set the hard and soft restrictions for the logits processor.
         """
-        if not hard_restrictions and not soft_restrictions:
+        if not restricted_candidates and not hard_restrictions and not soft_restrictions:
             raise ValueError("At least one restriction must be provided.")
 
-        self.current_hard_restrictions = hard_restrictions
-        self.current_soft_restrictions = soft_restrictions
+        self.current_restricted_candidates = restricted_candidates or []
+        self.current_hard_restrictions = hard_restrictions or []
+        self.current_soft_restrictions = soft_restrictions or []
 
     def clear_restrictions(self):
         """
         Clear the current restrictions.
         """
-        self.current_hard_restrictions = None
-        self.current_soft_restrictions = None
+        self.current_restricted_candidates = []
+        self.current_hard_restrictions = []
+        self.current_soft_restrictions = []
 
     def __call__(self, input_ids, scores):
         # restrictions are independent of input ids, so the full_mask will be repeated for each input row
-        if self.current_hard_restrictions is None or self.current_soft_restrictions is None:
-            warnings.warn(
-                "No restrictions set. Returning scores without applying any restrictions.",
-                UserWarning,
-            )
-            return scores
+        full_mask = self.gen_keepmask_restricted_candidates()
 
-        full_mask = np.zeros(len(self.tokenizer), dtype=bool)
+        if np.all(full_mask):
+            raise RestrictionNotApplicable()
+        # TODO: add check if restricted_candidates form a connected component in the CKG
 
         for h_rest in self.current_hard_restrictions:
             full_mask = np.logical_or(full_mask, self.gen_banmask_from_key(h_rest))
@@ -220,9 +225,30 @@ class RestrictionLogitsProcessorWordLevel(ConstrainedLogitsProcessorWordLevel):
         connected_entities = set()
         for entity_set in self.tokenized_ckg[token_id].values():
             connected_entities.update(entity_set if isinstance(entity_set, (list, set)) else [entity_set])
-        connected_entities = list(set(connected_entities))
 
         return connected_entities
+
+    def gen_keepmask_restricted_candidates(self):
+        mask = np.zeros(len(self.tokenizer), dtype=bool)
+
+        if self.current_restricted_candidates:
+            mask[self.tokenized_entities] = True  # Ban all entities by default
+
+            shared_connected_entities = self.extract_connected_entities(self.current_restricted_candidates[0])
+            for r_candidate in self.current_restricted_candidates[1:]:
+                if r_candidate in self.tokenized_ckg:
+                    r_candidate_connected_entities = self.extract_connected_entities(r_candidate)
+                    shared_connected_entities = shared_connected_entities & r_candidate_connected_entities
+
+                    # for connected_entity in connected_entities:
+                    #     connected_tokens = self.extract_connected_entities(connected_entity)
+                    #     connected_tokens.append(connected_entity)
+                    #     mask[connected_tokens] = False # connected_entities
+
+            mask[self.current_restricted_candidates] = False  # Keep all restricted candidates
+            mask[list(shared_connected_entities)] = False
+
+        return mask
 
     def gen_banmask_from_key(self, token_id):
         mask = np.zeros(len(self.tokenizer), dtype=bool)
@@ -230,7 +256,7 @@ class RestrictionLogitsProcessorWordLevel(ConstrainedLogitsProcessorWordLevel):
         mask[token_id] = True
 
         if token_id in self.tokenized_ckg and self.propagate_connected_entities:
-            connected_entities = self.extract_connected_entities(token_id)
+            connected_entities = list(self.extract_connected_entities(token_id))
             mask[connected_entities] = True
 
             # for connected_entity in connected_entities:
@@ -364,7 +390,9 @@ def prepare_zero_shot_raw_inputs(matched_preferences, dataset):
     return raw_inputs
 
 
-def match_elements(elements, kg_elements_semantic_matcher, entity_mapping, dataset_for_tokenization=None):
+def match_elements(
+    elements, kg_elements_semantic_matcher, entity_mapping, dataset_for_tokenization=None, tag_offset=0.1
+):
     """
     Match elements to the most similar items in the knowledge graph using semantic matching.
     Performs a double match: first for the element itself, then for the tag prefixed with "tag.",
@@ -389,7 +417,8 @@ def match_elements(elements, kg_elements_semantic_matcher, entity_mapping, datas
                 elif tag_match is not None:
                     match_name, match_dist = match
                     _, tag_match_dist = tag_match
-                    if tag_match_dist < match_dist and not match_name.startswith("indicator."):  # Indicator priority
+                    # Indicator priority
+                    if tag_match_dist + tag_offset < match_dist and not match_name.startswith("indicator."):
                         match = tag_match
                 match, _ = match
 
@@ -397,17 +426,21 @@ def match_elements(elements, kg_elements_semantic_matcher, entity_mapping, datas
                 logger.info(f"Matched '{el}' to '{match}' with mapped value '{mapped_match}'")
 
                 if dataset_for_tokenization is not None and isinstance(mapped_match, int):
-                    if mapped_match < dataset_for_tokenization.item_num:
-                        token = PathLanguageModelingTokenType.ITEM.token + str(mapped_match)
-                    else:
-                        token = PathLanguageModelingTokenType.ENTITY.token + str(mapped_match)
-
-                    mapped_match = dataset_for_tokenization.tokenizer.convert_tokens_to_ids(token)
+                    mapped_match = id2tokenizer_token(dataset_for_tokenization, mapped_match)
 
                 matched_elements.append(mapped_match)
         matched_elements = list(set(matched_elements))  # Remove duplicates
 
     return matched_elements
+
+
+def id2tokenizer_token(dataset, _id):
+    if _id < dataset.item_num:
+        token = PathLanguageModelingTokenType.ITEM.token + str(_id)
+    else:
+        token = PathLanguageModelingTokenType.ENTITY.token + str(_id)
+
+    return dataset.tokenizer.convert_tokens_to_ids(token)
 
 
 def token2real_token(token, dataset):
@@ -421,3 +454,142 @@ def token2real_token(token, dataset):
         token = dataset.field2id_token[dataset.relation_field][int(token[1:])]
 
     return token
+
+
+def prepare_recommender_and_raw_inputs(  # noqa: PLR0913
+    user_id,
+    dataset,
+    recommender,
+    kg_elements_semantic_matcher,
+    existing_user_cumulative_sequence_postprocessor,
+    constrained_logits_processors_list,
+    zero_shot_constrained_logits_processors_list,
+    zero_shot_sequence_postprocessor,
+    preferences=None,
+    previous_recommendations=None,
+    hard_restrictions=None,
+    soft_restrictions=None,
+    restrict_preference_graph=False,
+    tag_offset=0.1,
+):
+    if user_id in dataset.field2id_token[dataset.uid_field]:
+        logger.info(f"User {user_id} exists in the dataset, using existing user sequence postprocessor.")
+        logger.info("Preparing raw inputs for existing user...")
+        ui_relation = dataset.field2token_id[dataset.relation_field][dataset.ui_relation]
+        raw_inputs = [
+            dataset.path_token_separator.join(
+                [
+                    dataset.tokenizer.bos_token,
+                    PathLanguageModelingTokenType.USER.token + user_id,
+                    PathLanguageModelingTokenType.RELATION.token + str(ui_relation),
+                ]
+            )
+        ]
+        recommender.sequence_postprocessor = existing_user_cumulative_sequence_postprocessor
+        recommender.logits_processor_list = constrained_logits_processors_list
+    else:
+        logger.info(f"User {user_id} does not exist in the dataset, using zero-shot sequence postprocessor.")
+        logger.info("Finding best matches for preferences and preparing raw inputs...")
+        if not preferences:
+            logger.error("No preferences provided for zero-shot recommendation.")
+            return None
+        matched_preferences = match_elements(
+            elements=preferences,
+            kg_elements_semantic_matcher=kg_elements_semantic_matcher,
+            entity_mapping=dataset.field2token_id[dataset.entity_field],
+            dataset_for_tokenization=None,
+            tag_offset=tag_offset,
+        )
+        if not matched_preferences:
+            logger.error("No valid KG elements matching provided preferences for zero-shot recommendation.")
+            return None
+        raw_inputs = prepare_zero_shot_raw_inputs(matched_preferences, dataset)
+
+        recommender.sequence_postprocessor = zero_shot_sequence_postprocessor
+        recommender.logits_processor_list = zero_shot_constrained_logits_processors_list
+
+        if previous_recommendations:
+            matched_previous_recommendations = match_elements(
+                elements=previous_recommendations,
+                kg_elements_semantic_matcher=kg_elements_semantic_matcher,
+                entity_mapping=dataset.field2token_id[dataset.entity_field],
+                dataset_for_tokenization=dataset,
+                tag_offset=tag_offset,
+            )
+
+            for logit_processor in recommender.logits_processor_list:
+                if isinstance(logit_processor, ZeroShotConstrainedLogitsProcessor):
+                    logit_processor.previous_recommendations = matched_previous_recommendations
+
+        for logit_processor in recommender.logits_processor_list:
+            if isinstance(logit_processor, RestrictionLogitsProcessorWordLevel):
+                if hard_restrictions or soft_restrictions:
+                    logger.info("Setting restrictions")
+                    matched_hard_restrictions = match_elements(
+                        elements=hard_restrictions,
+                        kg_elements_semantic_matcher=kg_elements_semantic_matcher,
+                        entity_mapping=dataset.field2token_id["entity_id"],
+                        dataset_for_tokenization=dataset,
+                        tag_offset=tag_offset,
+                    )
+
+                    matched_soft_restrictions = match_elements(
+                        elements=soft_restrictions,
+                        kg_elements_semantic_matcher=kg_elements_semantic_matcher,
+                        entity_mapping=dataset.field2token_id["entity_id"],
+                        dataset_for_tokenization=dataset,
+                        tag_offset=tag_offset,
+                    )
+
+                    restrictions = {}
+                    if matched_hard_restrictions or matched_soft_restrictions:
+                        restrictions.update(
+                            dict(
+                                hard_restrictions=matched_hard_restrictions,
+                                soft_restrictions=matched_soft_restrictions,
+                            )
+                        )
+
+                    if restrict_preference_graph:
+                        tokenized_matched_preferences = [
+                            id2tokenizer_token(dataset, pref) for pref in matched_preferences
+                        ]
+                        restrictions["restricted_candidates"] = tokenized_matched_preferences
+
+                        logit_processor.set_restrictions(**restrictions)
+
+    return raw_inputs
+
+
+def reset_logits_processors(logits_processor_list):
+    """Clear restrictions and previous recommendations in logits processors."""
+    for logit_processor in logits_processor_list:
+        if isinstance(logit_processor, RestrictionLogitsProcessorWordLevel):
+            # Clear restrictions after generation
+            logit_processor.clear_restrictions()
+        elif isinstance(logit_processor, ZeroShotConstrainedLogitsProcessor):
+            # Clear previous recommendations after generation
+            logit_processor.previous_recommendations = None
+
+
+def unpack_recommendation_sequences_tuples(sequences, dataset, user_id):
+    recommendation_ids = [seq[1] for seq in sequences]
+    scores = [seq[2] for seq in sequences]
+    explanations = [seq[3] for seq in sequences]
+    for idx in range(len(explanations)):
+        explanations[idx] = [token2real_token(token, dataset) for token in explanations[idx][1:]]
+
+    try:
+        if user_id not in dataset.field2id_token[dataset.uid_field]:
+            explanations = [
+                f"User {user_id} has_preference " + " ".join(exp).replace(dataset.ui_relation, "interacted_with")
+                for exp in explanations
+            ]
+
+        mapped_recommendations = dataset.field2id_token["name"][dataset.item_feat[recommendation_ids]["name"]].tolist()
+        recommendations = [" ".join(filter(lambda x: x != "[PAD]", x)) for x in mapped_recommendations]
+    except Exception as e:
+        logger.error(f"Error processing recommendations: {e}")
+        return None
+
+    return scores, recommendations, explanations

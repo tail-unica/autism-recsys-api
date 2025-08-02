@@ -1,6 +1,7 @@
 import logging
 import os
 import pickle
+from functools import lru_cache
 from typing import Optional
 
 import faiss
@@ -154,6 +155,7 @@ class HierarchicalSemanticMatcher:
         logger.info(f"Index built with {self.faiss_index.ntotal} items")
         logger.info(self.get_stats())
 
+    @lru_cache(maxsize=128)
     def find_similar_items(self, query: str, top_k: int = 10, max_distance: float = 0.8) -> list[tuple[str, float]]:
         """
         Find similar items using semantic search.

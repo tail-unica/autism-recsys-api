@@ -54,6 +54,7 @@ async def get_recommendation(request: RecommendationRequest):
         previous_recommendations=tuple(request.previous_recommendations),
         recommendation_count=request.recommendation_count,
         diversity_penalty=request.diversity_factor,
+        restrict_preference_graph=request.restrict_preference_graph,
     )
 
     if recommender_output is None:
