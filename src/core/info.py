@@ -1,4 +1,3 @@
-import logging
 from typing import Literal, Optional
 
 import polars as pl
@@ -11,8 +10,7 @@ from src.core import (
     recipes_only_semantic_matcher,
 )
 from src.core.semantic_matcher import HierarchicalSemanticMatcher
-
-logger = logging.getLogger("PHaSE API")
+from src.core.utils import logger
 
 
 def get_food_info(food_item: str):

@@ -1,5 +1,3 @@
-import datetime
-import logging
 import os
 
 import numpy as np
@@ -9,39 +7,19 @@ from hopwise.data.utils import PathLanguageModelingTokenType, create_dataset, da
 from hopwise.model.logits_processor import LogitsProcessorList
 from hopwise.model.sequence_postprocessor import CumulativeSequenceScorePostProcessor
 from hopwise.utils import get_model, init_seed
-from hydra import compose, initialize
-from hydra.core.global_hydra import GlobalHydra
 from safetensors.torch import load_file
 from transformers import AutoTokenizer  # , StoppingCriteriaList
 
-from src.core.recommendation import (
+from src.core.recommendation_tools import (
     RestrictionLogitsProcessorWordLevel,
     ZeroShotConstrainedLogitsProcessor,
     # ZeroShotCriteria,
     ZeroShotCumulativeSequenceScorePostProcessor,
 )
 from src.core.semantic_matcher import HierarchicalSemanticMatcher
+from src.core.utils import cfg, logger
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
-
-GlobalHydra.instance().clear()
-with initialize(config_path=os.path.join(os.pardir, os.pardir, "config"), version_base=None):
-    cfg = compose(config_name="default")
-
-# Configure logging
-logfile = os.path.join("logs", f"core-{datetime.datetime.now().strftime('%b-%d-%Y_%H-%M-%S')}.log")
-os.makedirs(os.path.dirname(logfile), exist_ok=True)
-
-file_handler = logging.FileHandler(logfile)
-file_handler.setLevel(logging.DEBUG)
-file_handler.setFormatter(logging.Formatter(cfg.logging.format))
-
-stream_handler = logging.StreamHandler()
-stream_handler.setLevel(cfg.logging.level)
-stream_handler.setFormatter(logging.Formatter(cfg.logging.format))
-
-logging.basicConfig(level=cfg.logging.level, handlers=[file_handler, stream_handler])
-logger = logging.getLogger("PHaSE API")
 
 # Load Data
 data_dir = cfg.data.data_dir
@@ -70,8 +48,11 @@ ingredients_only_semantic_matcher = HierarchicalSemanticMatcher(
     cache_dir=cfg.semantic_search.cache_dir,
     batch_size=cfg.semantic_search.batch_size,
 )
+ingredients = np.unique(
+    food_data.filter(pl.col("food_item_type") == "ingredient").select(pl.col("name")).collect().to_numpy().flatten()
+)
 ingredients_only_semantic_matcher.encode_items(
-    food_data.filter(pl.col("food_item_type") == "ingredient").select(pl.col("name")).collect().to_numpy().flatten(),
+    ingredients,
     data_identifier="only_ingredients_data",
     force_recompute=cfg.semantic_search.force_recompute,
 )
@@ -84,8 +65,11 @@ recipes_only_semantic_matcher = HierarchicalSemanticMatcher(
     cache_dir=cfg.semantic_search.cache_dir,
     batch_size=cfg.semantic_search.batch_size,
 )
+recipes = np.unique(
+    food_data.filter(pl.col("food_item_type") == "recipe").select(pl.col("name")).collect().to_numpy().flatten()
+)
 recipes_only_semantic_matcher.encode_items(
-    food_data.filter(pl.col("food_item_type") == "recipe").select(pl.col("name")).collect().to_numpy().flatten(),
+    recipes,
     data_identifier="only_recipes_data",
     force_recompute=cfg.semantic_search.force_recompute,
 )
@@ -157,9 +141,16 @@ kg_elements_semantic_matcher = HierarchicalSemanticMatcher(
     batch_size=cfg.semantic_search.batch_size,
 )
 
-kg_elements = dataset.field2id_token[dataset.entity_field][dataset.item_num :]  # skip items ids
+non_items_kg_elements = dataset.field2id_token[dataset.entity_field][dataset.item_num :]  # skip items ids
+items_kg_elements = list(dataset.entity2item.keys())
+kg_elements = np.concatenate([items_kg_elements, non_items_kg_elements])
+no_id_kg_elements_map = {}
+for el in kg_elements:
+    name = ".".join(el.split(".", maxsplit=2)[::2])  # skips numeric ID
+    no_id_kg_elements_map.setdefault(name, []).append(el)
+
 kg_elements_semantic_matcher.encode_items(
-    np.concatenate([list(dataset.entity2item.keys()), kg_elements]),
+    np.array(list(no_id_kg_elements_map.keys())),
     data_identifier="kg_elements_data",
     force_recompute=cfg.semantic_search.force_recompute,
 )

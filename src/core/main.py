@@ -1,30 +1,19 @@
-import logging
 from functools import lru_cache
 from typing import Literal, Optional
 
 import torch
 from hopwise.data import Interaction
 
-from src.core import (
-    cfg,
-    constrained_logits_processors_list,
-    dataset,
-    existing_user_cumulative_sequence_postprocessor,
-    kg_elements_semantic_matcher,
-    recommender,
-    zero_shot_constrained_logits_processors_list,
-    zero_shot_sequence_postprocessor,
-    # zero_shot_stop_criteria_list,
-)
+from src.core import dataset, recommender
 from src.core.alternative import filter_healthy_and_sustainable
 from src.core.info import get_food_info, get_food_semantic_matcher
 from src.core.recommendation import (
-    prepare_recommender_and_raw_inputs,
+    prepare_recommender_and_raw_inputs_existing_user,
+    prepare_recommender_and_raw_inputs_zero_shot,
     reset_logits_processors,
     unpack_recommendation_sequences_tuples,
 )
-
-logger = logging.getLogger("PHaSE API")
+from src.core.utils import cfg, logger
 
 
 # Dummy function representing the food recommender system
@@ -174,22 +163,23 @@ def food_recommender(  # noqa: PLR0913
     )
     logger.info(f"Generating recommendations with parameters: {kwargs}")
 
-    raw_inputs = prepare_recommender_and_raw_inputs(
-        user_id,
-        dataset,
-        recommender,
-        kg_elements_semantic_matcher,
-        existing_user_cumulative_sequence_postprocessor,
-        constrained_logits_processors_list,
-        zero_shot_constrained_logits_processors_list,
-        zero_shot_sequence_postprocessor,
-        preferences=preferences,
-        previous_recommendations=previous_recommendations,
-        hard_restrictions=hard_restrictions,
-        soft_restrictions=soft_restrictions,
-        restrict_preference_graph=restrict_preference_graph,
-        tag_offset=cfg.recommender.tag_offset,
-    )
+    if user_id in dataset.field2id_token[dataset.uid_field]:
+        logger.info(f"User {user_id} exists in the dataset, using existing user sequence postprocessor.")
+        prepare_recommender_and_raw_inputs_existing_user(
+            user_id,
+            dataset,
+            recommender,
+        )
+    else:
+        logger.info(f"User {user_id} does not exist in the dataset, using zero-shot sequence postprocessor.")
+        raw_inputs, matched_previous_recommendations = prepare_recommender_and_raw_inputs_zero_shot(
+            dataset,
+            preferences=preferences,
+            previous_recommendations=previous_recommendations,
+            hard_restrictions=hard_restrictions,
+            soft_restrictions=soft_restrictions,
+            restrict_preference_graph=restrict_preference_graph,
+        )
 
     logger.info("Tokenizing raw inputs for recommendation generation...")
     inputs = dataset.tokenizer(raw_inputs, return_tensors="pt", add_special_tokens=False).to(cfg.recommender.device)
@@ -217,7 +207,7 @@ def food_recommender(  # noqa: PLR0913
     logger.info("Processing outputs to get recommendations...")
     max_new_tokens = recommender.token_sequence_length - inputs["input_ids"].size(1)
     _, sequences = recommender.sequence_postprocessor.get_sequences(
-        outputs, max_new_tokens=max_new_tokens, previous_recommendations=previous_recommendations
+        outputs, max_new_tokens=max_new_tokens, previous_recommendations=matched_previous_recommendations
     )
 
     # for seq in sequences:

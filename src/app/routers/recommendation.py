@@ -49,6 +49,7 @@ async def get_recommendation(request: RecommendationRequest):
         )
         food_recommender = core.dummy_food_recommender
 
+    logger.info(f"API get_recommendation: RecommendationRequest({request})")
     recommender_output = food_recommender(
         request.user_id,
         preferences=tuple(request.preferences),
@@ -132,6 +133,7 @@ def get_alternative(request: AlternativeRequest):
         )
         food_alternative = core.dummy_food_alternative
 
+    logger.info(f"API get_alternative: AlternativeRequest({request})")
     food_item = request.food_item
     alternative_output = food_alternative(food_item, k=request.num_alternatives, food_item_type=request.food_item_type)
 

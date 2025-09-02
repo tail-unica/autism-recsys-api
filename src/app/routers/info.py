@@ -30,6 +30,7 @@ async def get_info(
         )
         food_info_fetcher = core.dummy_food_info_fetcher
 
+    logger.info(f"API get_info: {food_item}, {food_item_type}")
     info_response = food_info_fetcher(food_item, food_item_type=food_item_type)
 
     if info_response is None:

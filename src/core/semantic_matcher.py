@@ -1,4 +1,3 @@
-import logging
 import os
 import pickle
 from functools import lru_cache
@@ -8,7 +7,7 @@ import faiss
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
-logger = logging.getLogger("PHaSE API")
+from src.core.utils import logger
 
 
 class HierarchicalSemanticMatcher:
@@ -135,9 +134,8 @@ class HierarchicalSemanticMatcher:
         if self.use_hierarchical and len(self.items) > HierarchicalSemanticMatcher.MIN_HIERARCHICAL_ITEMS:
             # Hierarchical index for large datasets
             quantizer = faiss.IndexFlatIP(self.final_dim)
-            self.faiss_index = faiss.IndexIVFFlat(
-                quantizer, self.final_dim, min(self.n_clusters, len(self.items) // 10)
-            )
+            nlist = min(self.n_clusters, len(self.items) // 10)
+            self.faiss_index = faiss.IndexIVFFlat(quantizer, self.final_dim, nlist)
 
             # Train the index
             logger.info("Training hierarchical index...")
@@ -145,8 +143,7 @@ class HierarchicalSemanticMatcher:
             self.faiss_index.add(embeddings_normalized)
 
             # Set search parameters
-            self.faiss_index.nprobe = min(10, self.faiss_index.nlist)  # Search 10 clusters
-
+            self.faiss_index.nprobe = min(max(16, nlist // 8), 128)
         else:
             # Flat index for smaller datasets
             self.faiss_index = faiss.IndexFlatIP(self.final_dim)
