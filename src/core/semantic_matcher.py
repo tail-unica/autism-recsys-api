@@ -181,7 +181,7 @@ class HierarchicalSemanticMatcher:
         # Search
         distances, indices = self.faiss_index.search(query_embedding, min(top_k, len(self.items)))
         logger.info(f"Search completed. Found {len(distances[0])} candidates with cosine distances {distances[0]}")
-        print(f"Candidates: {self.items[indices[0]]}")
+        logger.info(f"Candidates: {self.items[indices[0]]}")
 
         # Filter and format results
         results = []
