@@ -12,7 +12,7 @@ path = "src/__init__.py"
 allow-direct-references = true
 
 [project]
-name = "PHaSEAPI"
+name = "AutismRecsysAPI"
 description = """
 """
 authors = [
@@ -46,11 +46,11 @@ dependencies = [
     "pydantic",
     "uvicorn",
     "polars",
-    "sentence-transformers>=4.1.0",
-    "faiss-gpu>=1.7.2",
+    # "sentence-transformers>=4.1.0",
+    # "faiss-gpu>=1.7.2",
     "numpy==1.26.4",
     "hydra-core>=1.3.2",
-    "hopwise[pathlm,cli]",
+    # "hopwise[pathlm,cli]",
 ]
 
 [dependency-groups]
@@ -63,8 +63,8 @@ dev = [
     "yellowbrick>=1.5",
 ]
 
-[tool.uv.sources]
-hopwise = { path = "./hopwise", package = true }
+# [tool.uv.sources]
+# hopwise = { path = "./hopwise", package = true }
 
 [tool.ruff]
 line-length = 119
@@ -94,5 +94,5 @@ line-ending = "auto"
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
-[tool.ruff.lint.isort]
-known-third-party = ["hopwise"]
+# [tool.ruff.lint.isort]
+# known-third-party = ["hopwise"]

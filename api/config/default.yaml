@@ -1,7 +1,9 @@
 data:
-  data_dir: "data"
-  parquet_file: "phase_recipes.parquet"
-  recommender_dataset: "hummus"
+  data_dir: "data/autism"
+  csv_place_data: "turin_autism.item"
+  csv_place_col_name: "name:token_seq"
+  csv_separator: "\t"
+  recommender_dataset: "autism"
 
 core:
   healthiness_metric: "nutri_group"
@@ -46,8 +48,8 @@ recommender:
 api:
   host: "0.0.0.0"
   port: 8100
-  title: "PhaseAPI - Food Recommendation System"
-  description: "Food recommendation API service"
+  title: "AutismAPI"
+  description: "Place recommendation for People w/ ASD"
 
 logging:
   level: "INFO"

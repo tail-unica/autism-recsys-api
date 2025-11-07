@@ -2,6 +2,7 @@
 saved/
 *.pth
 
+.env
 .vscode/
 .idea/
 *.pyc
