@@ -30,6 +30,6 @@ app = FastAPI(
 app.include_router(info.router, tags=["info"])
 app.include_router(recommendation.router, tags=["recommendation"])
 
-@app.get("")
+@app.get("/")
 async def root():
     return RedirectResponse(url="/docs")

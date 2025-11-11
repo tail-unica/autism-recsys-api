@@ -14,3 +14,5 @@ embeddings_cache/
 preprocessing/raw_data/
 logs/
 dist/
+
+hopwise/
