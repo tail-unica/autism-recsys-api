@@ -1,13 +1,9 @@
 import neo4j
 
-def _parse_geojson_from_neo4j_point(point: str, properties: dict = None) -> dict:
-    """Parse a SRID string into a GeoJSON dictionary."""
+def _parse_geojson_from_neo4j_point(point: neo4j.spatial.Point, properties: dict = None) -> dict:
+    """Parse a Neo4j Point object into a GeoJSON dictionary."""
     try:
-        point = point.replace("point({", "")
-        point = point.replace("})", "")
-        data = point.split(", ")
-        lon = float(data[1].split(": ")[1])
-        lat = float(data[2].split(": ")[1])
+        lon, lat = point.x, point.y
         return {
             "type": "Feature",
             "geometry": {
@@ -16,10 +12,10 @@ def _parse_geojson_from_neo4j_point(point: str, properties: dict = None) -> dict
             },
             "properties": properties or {},
         }
-    except Exception:
+    except AttributeError:
         return None
 
-def fetch_place_info(session: neo4j.Session, info: str) -> dict:
+def fetch_place_info(session: neo4j.Session, info: str, logger = None) -> dict:
     """Fetch place information from the database based on the exact provided place name."""
     result = session.run(
         "MATCH (p:Place {name: $info}) "
@@ -31,6 +27,8 @@ def fetch_place_info(session: neo4j.Session, info: str) -> dict:
         info=info,
     )
     record = result.single()
+    if logger:
+        logger.info(f"Fetched place info for '{info}': {record}")
     if record:
         return {
             "place": record["name"],

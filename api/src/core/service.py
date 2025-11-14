@@ -58,5 +58,5 @@ class RecommenderService:
             raise RuntimeError("Service not ready")
 
         with self._neo4j_driver.session() as session:
-            info = fetch_place_info(session, place)
+            info = fetch_place_info(session, place, logger=self._logger)
         return info
