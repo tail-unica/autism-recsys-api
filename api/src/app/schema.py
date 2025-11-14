@@ -1,5 +1,5 @@
 from typing import Generic, Optional, List, Set, TypeVar
-from pydantic import BaseModel, Field, PositiveInt, model_validator
+from pydantic import BaseModel, Field, PositiveInt, model_validator, RootModel
 from pydantic.config import ConfigDict
 from enum import Enum
 
@@ -39,22 +39,22 @@ class Feature(BaseModel, Generic[EnumType]):
         description="Name of the sensory feature",
         example="light",
     )
-    rating: int = Field(
+    rating: float = Field(
         description="Rating of the sensory feature from 1 (low) to 5 (high)",
-        example=3,
-        ge=1,
-        le=5,
+        example=3.5,
+        ge=1.0,
+        le=5.0,
     )
 
 
-class FeatureSet(BaseModel, Generic[EnumType]):
+class FeatureSet(RootModel[List[Feature[EnumType]]], Generic[EnumType]):
     """Set of sensory features with ratings"""
 
-    features: List[Feature[EnumType]] = Field(
+    root: List[Feature[EnumType]] = Field(
         description="List of sensory features with their ratings",
         example=[
-            {"feature_name": "light", "rating": 3},
-            {"feature_name": "space", "rating": 4},
+            {"feature_name": "light", "rating": 3.0},
+            {"feature_name": "space", "rating": 4.5},
         ],
     )
 
@@ -62,13 +62,13 @@ class FeatureSet(BaseModel, Generic[EnumType]):
 
     @model_validator(mode="after")
     def validate_features(self) -> "FeatureSet[EnumType]":
-        if not self.features:
+        if not self.root:
             raise ValueError("At least one feature must be provided.")
 
         enum_cls = self.__pydantic_generic_metadata__["args"][0]
 
         required: Set[EnumType] = set(enum_cls)
-        provided: Set[EnumType] = {f.feature_name for f in self.features}
+        provided: Set[EnumType] = {f.feature_name for f in self.root}
 
         missing = required - provided
         if missing:
@@ -85,7 +85,29 @@ class FeatureSet(BaseModel, Generic[EnumType]):
         return self
 
 
-# --- Request and Response Models ---
+# --- INFO: Request and Response Models ---
+
+class GeoJSON(BaseModel):
+    """GeoJSON Feature model for representing geographical positions"""
+
+    type: str = Field(
+        default="Feature",
+        description="Type of the GeoJSON object",
+        example="Feature",
+    )
+    geometry: dict = Field(
+        description="Geometry object containing type and coordinates",
+        example={
+            "type": "Point",
+            "coordinates": [45.0703, 7.6869],
+        },
+    )
+    properties: Optional[dict] = Field(
+        default=None,
+        description="Additional properties for the GeoJSON feature",
+        example={},
+    )
+
 
 class InfoRequest(BaseModel):
     """Request model for place information endpoint"""
@@ -107,20 +129,32 @@ class InfoResponse(BaseModel):
     address: Optional[str] = Field(
         default=None, description="Address of the place", example="Via Montebello, 20, 10124 Torino TO, Italy"
     )
-    sensory_features: FeatureSet[SensoryFeatures] = Field(
-        description="Sensory features ratings for the place",
+    coordinates: Optional[GeoJSON] = Field(
+        default=None,
+        description="Geographical position of the place in GeoJSON format",
         example={
-            "features": [
-                {"feature_name": "light", "rating": 3},
-                {"feature_name": "space", "rating": 4},
-                {"feature_name": "crowd", "rating": 2},
-                {"feature_name": "noise", "rating": 3},
-                {"feature_name": "odor", "rating": 1},
-            ]
+            "type": "Feature",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [45.0703, 7.6869],
+            },
+            "properties": {},
         },
     )
+    sensory_features: FeatureSet[SensoryFeatures] = Field(
+        description="Sensory features ratings for the place",
+        example=[
+            {"feature_name": "light", "rating": 3.0},
+            {"feature_name": "space", "rating": 4.0},
+            {"feature_name": "crowd", "rating": 2.0},
+            {"feature_name": "noise", "rating": 3.0},
+            {"feature_name": "odor", "rating": 1.0},
+        ],
+    )
 
+# --- RECOMMENDATION: Request and Response Models ---
 
+# TODO: Add previous preferences
 class RecommendationRequest(BaseModel):
     """Request model for place recommendations"""
 
@@ -151,17 +185,15 @@ class RecommendationRequest(BaseModel):
     )
     aversions: FeatureSet[IdiosyncraticAversions] = Field(
         description="Sensory idiosyncratic aversion details for the user",
-        example={
-            "features": [
-                {"feature_name": "bright_light", "rating": 2},
-                {"feature_name": "dim_light", "rating": 3},
-                {"feature_name": "wide_space", "rating": 1},
-                {"feature_name": "narrow_space", "rating": 4},
-                {"feature_name": "crowd", "rating": 5},
-                {"feature_name": "noise", "rating": 2},
-                {"feature_name": "odor", "rating": 1},
-            ]
-        },
+        example=[
+            {"feature_name": "bright_light", "rating": 2.0},
+            {"feature_name": "dim_light", "rating": 3.0},
+            {"feature_name": "wide_space", "rating": 1.0},
+            {"feature_name": "narrow_space", "rating": 4.0},
+            {"feature_name": "crowd", "rating": 5.0},
+            {"feature_name": "noise", "rating": 2.0},
+            {"feature_name": "odor", "rating": 1.0},
+        ],
     )
     conversation_id: Optional[str] = Field(
         default=None,

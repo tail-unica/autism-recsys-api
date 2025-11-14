@@ -28,7 +28,10 @@ async def get_place_info(
     **model**: Model to use for fetching information
     """
     service._logger.info(f"API get_place_info: place({place})")
+    
     info_response = await service.fetch_place_info(place)
+
+    service._logger.info(f"API get_place_info: response({info_response})")
 
     if not info_response:
         raise HTTPException(

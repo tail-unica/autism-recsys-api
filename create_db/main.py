@@ -30,8 +30,8 @@ def main():
 
 if __name__ == "__main__":
     neo4j_uri = os.getenv("NEO4J_URI")
-    neo4j_user = "neo4j"
-    neo4j_password = os.getenv("NEO4J_AUTH")
+    neo4j_user = os.getenv("NEO4J_USER")
+    neo4j_password = os.getenv("NEO4J_PASSWORD")
 
     # delete_all_nodes(neo4j_uri, neo4j_user, neo4j_password)
 

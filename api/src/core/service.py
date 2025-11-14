@@ -1,9 +1,12 @@
 from __future__ import annotations
 import asyncio
 from typing import Any, Dict, Optional
+from neo4j import GraphDatabase
+import os
 
 from src.core.utils import get_cfg, get_logger
 from src.core.dummy import dummy_place_info_fetcher, dummy_place_recommender
+from src.core.info import fetch_place_info
 
 class RecommenderService:
     def __init__(self) -> None:
@@ -17,9 +20,18 @@ class RecommenderService:
         self._indices = None
         self._matcher = None
 
+        self._neo4j_driver = None
+
     async def initialize(self) -> None:
         self._cfg = get_cfg()
         self._logger = get_logger()
+
+        self._neo4j_driver = GraphDatabase.driver(
+            os.getenv("NEO4J_URI"),
+            auth=(os.getenv("NEO4J_USER"), os.getenv("NEO4J_PASSWORD")),
+        )
+        self._logger.info("Connected to Neo4j database.")
+
         self._logger.info("RecommenderService: Starting initialization.")
 
         self._ready = True
@@ -45,4 +57,6 @@ class RecommenderService:
         if not self._ready:
             raise RuntimeError("Service not ready")
 
-        return dummy_place_info_fetcher(place)
+        with self._neo4j_driver.session() as session:
+            info = fetch_place_info(session, place)
+        return info
