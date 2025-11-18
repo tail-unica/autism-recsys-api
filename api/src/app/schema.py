@@ -152,6 +152,47 @@ class InfoResponse(BaseModel):
         ],
     )
 
+
+class SearchRequest(BaseModel):
+    """Request model for place search endpoint"""
+
+    query: str = Field(
+        description="Search query string", example="museum"
+    )
+    limit: Optional[PositiveInt] = Field(
+        default=10,
+        description="Maximum number of results to return", example=5
+    )
+    position: Optional[GeoJSON] = Field(
+        default=None,
+        description="Geographical position to center the search around",
+        example={
+            "type": "Feature",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [45.0703, 7.6869],
+            },
+            "properties": {},
+        },
+    )
+    distance: Optional[float] = Field(
+        default=1000.0,
+        description="Search radius in meters", example=500.0
+    )
+    categories: Optional[List[str]] = Field(
+        default=None,
+        description="List of category IDs to filter the search results", example=["Museum", "Park"]
+    )
+
+
+class SearchResponse(BaseModel):
+    """Response model for place search endpoint"""
+
+    results: List[InfoResponse] = Field(
+        description="List of places matching the search criteria"
+    )
+
+
 # --- RECOMMENDATION: Request and Response Models ---
 
 # TODO: Add previous preferences

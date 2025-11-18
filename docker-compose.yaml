@@ -41,8 +41,8 @@ services:
 
   # DEVELOPMENT ONLY
   create_db:
-    build: ./create_db
-    container_name: create_db_dev
+    build: ./experiments
+    container_name: neo4j_experiments
     volumes:
       - ./:/src
     working_dir: /src/create_db

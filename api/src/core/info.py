@@ -1,4 +1,5 @@
 import neo4j
+from typing import List
 
 def _parse_geojson_from_neo4j_point(point: neo4j.spatial.Point, properties: dict = None) -> dict:
     """Parse a Neo4j Point object into a GeoJSON dictionary."""
@@ -14,6 +15,17 @@ def _parse_geojson_from_neo4j_point(point: neo4j.spatial.Point, properties: dict
         }
     except AttributeError:
         return None
+
+def _parse_lon_lat_from_geojson(geojson: dict) -> tuple:
+    """Extract longitude and latitude from a GeoJSON dictionary."""
+    try:
+        coordinates = geojson.get("geometry", {}).get("coordinates", [])
+        if len(coordinates) == 2:
+            lon, lat = coordinates
+            return lon, lat
+    except (AttributeError, TypeError):
+        pass
+    return None, None
 
 def fetch_place_info(session: neo4j.Session, info: str, logger = None) -> dict:
     """Fetch place information from the database based on the exact provided place name."""
@@ -48,4 +60,53 @@ def fetch_place_info(session: neo4j.Session, info: str, logger = None) -> dict:
             ],
         }
     else:
-        return {}
+        if logger:
+            logger.warning(f"No place found with name '{info}'")
+        return None
+
+def search(
+    session: neo4j.Session,
+    query: str,
+    limit: int = 10,
+    position: dict = None,
+    distance: float = 1000.0, # in meters
+    categories: list = None,
+    logger = None
+) -> List[dict]:
+    """Returns a list of places names based on the search query and optional filters."""
+    normalized_query = query.strip() if query else ""
+    cypher = "MATCH (p:Place) "
+    params = {}
+    where_clauses = []
+
+    if normalized_query:
+        where_clauses.append("toLower(p.name) CONTAINS toLower($query)")
+        params["query"] = normalized_query
+
+    if categories:
+        where_clauses.append("EXISTS { (p)-[:BELONGS_TO_CATEGORY]->(c:Category) WHERE c.id IN $categories }")
+        params["categories"] = categories
+
+    if position:
+        lon, lat = _parse_lon_lat_from_geojson(position)
+        if lon is not None and lat is not None:
+            where_clauses.append(
+                "point.distance(p.coordinates, point({longitude: $lon, latitude: $lat})) <= $distance"
+            )
+            params["lon"], params["lat"] = lon, lat
+            params["distance"] = distance
+
+    if where_clauses:
+        cypher += "WHERE " + " AND ".join(where_clauses) + " "
+
+    # TODO: improve randomization strategy for large datasets
+    if not normalized_query:
+        cypher += "WITH p ORDER BY rand() "
+
+    cypher += (
+        "RETURN p.name AS name "
+        "LIMIT $limit"
+    )
+    params["limit"] = limit
+    result = session.run(cypher, **params)
+    return [{"name": record["name"]} for record in result]

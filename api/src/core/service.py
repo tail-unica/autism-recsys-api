@@ -60,3 +60,23 @@ class RecommenderService:
         with self._neo4j_driver.session() as session:
             info = fetch_place_info(session, place, logger=self._logger)
         return info
+
+    async def search_places(self, query: Dict[str, Any]) -> Dict[str, Any]:
+        if not self._ready:
+            raise RuntimeError("Service not ready")
+
+        with self._neo4j_driver.session() as session:
+            from src.core.info import search
+            results = search(
+                session,
+                query.get("query", ""),
+                limit=query.get("limit", 10),
+                position=query.get("position"),
+                distance=query.get("distance", 1000.0),
+                categories=query.get("categories"),
+                logger=self._logger,
+            )
+            
+            self._logger.info(f"Fetching info for: {results}")
+            results = {"results": [fetch_place_info(session, r["name"], logger=self._logger) for r in results if r["name"] is not None]}
+        return results

@@ -1,8 +1,9 @@
-from typing import Literal, Optional
+from typing import Literal, Optional, List, Dict, Any
+import json
 
-from fastapi import APIRouter, Request, Depends, HTTPException, status
+from fastapi import APIRouter, Request, Depends, HTTPException, status, Query
 
-from src.app.schema import InfoResponse
+from src.app.schema import InfoResponse, SearchRequest, SearchResponse
 
 router = APIRouter()
 
@@ -40,3 +41,35 @@ async def get_place_info(
         )
 
     return InfoResponse(**info_response)
+
+
+@router.post("/search", response_model=SearchResponse)
+async def search_places(
+    request: SearchRequest,
+    service = Depends(_get_service)
+) -> SearchResponse:
+    """
+    Place search endpoint.
+
+    **query**: Search query string
+    **limit**: Maximum number of results to return
+    **position**: Optional user position for proximity filtering
+    **distance**: Optional maximum distance (in meters) from the user position
+    **categories**: Optional list of category IDs to filter results
+    """
+    service._logger.info(f"API search_places: SearchRequest({request})")
+
+    search_results = await service.search_places(query=request.dict())
+
+    service._logger.info(
+        "API search_places: response:\n%s",
+        json.dumps(
+            search_results if not isinstance(search_results, str) else json.loads(search_results),
+            indent=2,
+            sort_keys=True,
+            ensure_ascii=False,
+            default=str,
+        ),
+    )
+
+    return SearchResponse(**search_results)
