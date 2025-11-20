@@ -1,0 +1,4 @@
+[submodule "Autism_POI_Recommendation_Demo"]
+	path = Autism_POI_Recommendation_Demo
+	url = https://huggingface.co/spaces/jackmedda/Autism_POI_Recommendation_Demo
+	branch = main
