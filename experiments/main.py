@@ -6,6 +6,8 @@ import polars as pl
 from src.create import Graph
 from src.reader import Reader
 
+from utils.dataloader import load_data
+
 logging.basicConfig(level=logging.INFO)
 
 def head(df: pl.DataFrame) -> None:
@@ -33,12 +35,9 @@ if __name__ == "__main__":
     neo4j_user = os.getenv("NEO4J_USER")
     neo4j_password = os.getenv("NEO4J_PASSWORD")
 
-    # delete_all_nodes(neo4j_uri, neo4j_user, neo4j_password)
+    # g = Graph(neo4j_uri, neo4j_user, neo4j_password)
 
-    r = Reader("data/")
-    df_reviews = r.link_user()
-    print(df_reviews)
-
-    g = Graph(neo4j_uri, neo4j_user, neo4j_password)
-    g.link_review(df_reviews)
-    g.close()
+    with neo4j.GraphDatabase.driver(neo4j_uri, auth=(neo4j_user, neo4j_password)) as driver:
+        with driver.session() as session:
+            df = load_data(session)
+            print(df)

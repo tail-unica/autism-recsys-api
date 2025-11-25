@@ -1,0 +1,50 @@
+kg:
+  __file__: true
+  __type__: GRAPH
+  head_id:token:
+    __type__: NODE
+    place: Place
+    user: User
+  relation_id:token:
+    __type__: RELATION
+    sensory_feature: HAS_SENSORY_FEATURE # e.g., Place HAS_SENSORY_FEATURE SensoryFeature
+    sensory_compatibility: HAS_SENSORY_COMPATIBILITY # e.g., User HAS_SENSORY_COMPATIBILITY SensoryFeature
+    category: BELONGS_TO_CATEGORY # e.g., Place BELONGS_TO_CATEGORY Category
+    place_compatibility: HAS_PLACE_COMPATIBILITY # e.g., User HAS_PLACE_COMPATIBILITY Place
+    preference: HAS_PREFERENCE # e.g., User HAS_PREFERENCE Category
+  tail_id:token:
+    __type__: NODE
+    sensory_feature: SensoryFeature
+    category: Category
+    place: Place
+
+inter:
+  __origin__: link
+  __from__: kg
+  __file__: true
+  __type__: GRAPH
+  user_id:token:
+    __self__: User
+    __link__: IS_AUTHOR_OF
+    __target__: rating:float
+  poi_id:token:
+    __self__: Place
+    __link__: ABOUT
+    __target__: rating:float
+  rating:float: 
+    __self__: Review
+    __yield__: rating
+
+user:
+  __origin__: link # link: create a link file from __from__ / same: uses same ids as __from__
+  __from__: kg
+  __file__: true
+  __type__: CSV
+  __self__: User
+
+item:
+  __origin__: link # link: create a link file from __from__ / same: uses same ids as __from__
+  __from__: kg
+  __file__: true
+  __type__: CSV
+  __self__: Place
