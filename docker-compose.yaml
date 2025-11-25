@@ -41,34 +41,18 @@ services:
       - backend
       - frontend
 
-  postgres:
-    image: postgres:15
-    container_name: asd-recsys-postgres
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=autism_poi_db
-    ports:
-      - "5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - postgres_network
-
   web:
     build: ./Autism_POI_Recommendation_Demo
     container_name: asd-recsys-app
     environment:
       - ENV=production
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=autism_poi_db
+      - API_URL=http://api:8100
     ports:
       - "7860:7860"
     depends_on:
-      - postgres
+      - api
     networks:
-      - postgres_network
+      - frontend
 
   # DEVELOPMENT ONLY
   experiments:
@@ -95,8 +79,6 @@ networks:
   backend:
     driver: bridge
   frontend:
-    driver: bridge
-  postgres_network:
     driver: bridge
 
 volumes:

@@ -124,7 +124,7 @@ class InfoResponse(BaseModel):
         description="Name of the place", example="Mole Antonelliana"
     )
     category: Optional[str] = Field(
-        default=None, description="Category of the place", example="Museum"
+        default=None, description="Category of the place", example="Piazze"
     )
     address: Optional[str] = Field(
         default=None, description="Address of the place", example="Via Montebello, 20, 10124 Torino TO, Italy"
@@ -157,7 +157,7 @@ class SearchRequest(BaseModel):
     """Request model for place search endpoint"""
 
     query: str = Field(
-        description="Search query string", example="museum"
+        description="Search query string", example="Museo"
     )
     limit: Optional[PositiveInt] = Field(
         default=10,
@@ -181,7 +181,7 @@ class SearchRequest(BaseModel):
     )
     categories: Optional[List[str]] = Field(
         default=None,
-        description="List of category IDs to filter the search results", example=["Museum", "Park"]
+        description="List of category IDs to filter the search results", example=["Piazze", "Ristoranti"]
     )
 
 

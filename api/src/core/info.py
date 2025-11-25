@@ -73,7 +73,11 @@ def search(
     categories: list = None,
     logger = None
 ) -> List[dict]:
-    """Returns a list of places names based on the search query and optional filters."""
+    """Returns a list of places names based on the search query and optional filters.
+    Integra una seconda fase di ricerca semantica (full-text) quando query non è vuoto e i risultati iniziali sono insufficienti.
+    Richiede un indice full-text creato a parte:
+    CALL db.index.fulltext.createNodeIndex('placeNameFulltext',['Place'],['name']);
+    """
     normalized_query = query.strip() if query else ""
     cypher = "MATCH (p:Place) "
     params = {}
@@ -84,7 +88,8 @@ def search(
         params["query"] = normalized_query
 
     if categories:
-        where_clauses.append("EXISTS { (p)-[:BELONGS_TO_CATEGORY]->(c:Category) WHERE c.id IN $categories }")
+        categories = [cat.lower() for cat in categories]
+        where_clauses.append("EXISTS { (p)-[:BELONGS_TO_CATEGORY]->(c:Category) WHERE toLower(c.id) IN $categories }")
         params["categories"] = categories
 
     if position:
@@ -101,6 +106,8 @@ def search(
 
     # TODO: improve randomization strategy for large datasets
     if not normalized_query:
+        if logger:
+            logger.info("No search query provided, returning random places")
         cypher += "WITH p ORDER BY rand() "
 
     cypher += (
@@ -108,5 +115,40 @@ def search(
         "LIMIT $limit"
     )
     params["limit"] = limit
-    result = session.run(cypher, **params)
-    return [{"name": record["name"]} for record in result]
+    if logger:
+        logger.info(f"Querying (primary): {cypher} with params: {params}")
+
+    # FIX: evitare conflitto 'query' con argomento posizionale di Session.run()
+    result = session.run(cypher, parameters=params)
+    names = [record["name"] for record in result]
+
+    # Ricerca semantica (full-text) se query presente e risultati incompleti
+    if normalized_query and len(names) < limit:
+        remaining = limit - len(names)
+        if remaining > 0:
+            semantic_cypher = (
+                "CALL db.index.fulltext.queryNodes('placeNameFulltext', $query) "
+                "YIELD node, score "
+                "RETURN node.name AS name "
+                "LIMIT $remaining"
+            )
+            if logger:
+                logger.info(f"Querying (semantic fallback): {semantic_cypher} with params: {{'query': '{normalized_query}', 'remaining': {remaining}}}")
+            try:
+                semantic_result = session.run(
+                    semantic_cypher,
+                    parameters={"query": normalized_query, "remaining": remaining}
+                )
+                seen = set(names)
+                for record in semantic_result:
+                    n = record["name"]
+                    if n not in seen:
+                        names.append(n)
+                        seen.add(n)
+            except neo4j.exceptions.ClientError as e:
+                # Index mancante o altro errore
+                if logger:
+                    logger.warning(f"Semantic search skipped (full-text index missing or error): {e}")
+
+    # TODO: futura estensione: indice vettoriale per embedding semantiche (Neo4j vector indexes)
+    return [{"name": n} for n in names]
