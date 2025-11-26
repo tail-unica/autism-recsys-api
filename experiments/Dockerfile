@@ -2,9 +2,6 @@ FROM python:3.10-slim
 
 WORKDIR /src 
 
-ENV CONFIG_DATASET_PATH=/config
-ENV CONFIG_DATASET_NAME="dataset"
-
 COPY pyproject.toml .
 RUN pip install .
 

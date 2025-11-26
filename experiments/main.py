@@ -35,9 +35,12 @@ if __name__ == "__main__":
     neo4j_user = os.getenv("NEO4J_USER")
     neo4j_password = os.getenv("NEO4J_PASSWORD")
 
-    # g = Graph(neo4j_uri, neo4j_user, neo4j_password)
+    """
+    g = Graph(neo4j_uri, neo4j_user, neo4j_password)
+    g.user_metadata(Reader("./data/original_data").link_user())
+    g.close()
+    """
 
     with neo4j.GraphDatabase.driver(neo4j_uri, auth=(neo4j_user, neo4j_password)) as driver:
         with driver.session() as session:
-            df = load_data(session)
-            print(df)
+            load_data(session, "./data/autism")

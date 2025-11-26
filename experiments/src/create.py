@@ -335,3 +335,32 @@ class Graph:
 
         finally:
             logging.info("Reviews linked.")
+
+    def user_metadata(self, df: pl.DataFrame) -> None:
+        # define neo4j types for each column from .user file
+        proprieties = {
+            "entity_id": "STRING",
+            "autism": "BOOLEAN",
+        }
+        print(df)
+        try:
+            with self._driver.session() as session:
+                # Extract column names before ":" and create rename mapping
+                rename_mapping = {col: col.split(":")[0] for col in df.columns if ":" in col}
+                df_filtered = df.rename(rename_mapping).select(list(proprieties.keys()))
+                
+                # Convert to dicts
+                rows = df_filtered.to_dicts()
+
+                query = """
+                UNWIND $rows AS row
+                CALL apoc.merge.node(['User'], {id: row.entity_id}) YIELD node AS user_node
+                SET user_node.autism = row.autism
+                RETURN count(user_node) AS users_updated
+                """
+                
+                result = session.run(query, rows=rows)
+                logging.info(f"Updated {result.single()['users_updated']} users.")
+                
+        finally:
+            logging.info("User metadata update completed.")

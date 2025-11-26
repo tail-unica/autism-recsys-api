@@ -1,0 +1,25 @@
+epochs: 500
+train_batch_size: 512
+valid_metric: NDCG@10
+data_path: '../../../../recsysdatasets/'
+ITEM_ID_FIELD: 'poi_id'
+LABEL_FIELD: 'rating'
+metrics: ['recall', 'mrr', 'ndcg', 'hit', 'precision']
+valid_metric: ndcg@10
+valid_metric_bigger: True
+topk: 10
+eval_args:                      # (dict) 4 keys: group_by, order, split, and mode
+  split: {'RS':[0.8,0.1,0.1]}   # (dict) The splitting strategy ranging in ['RS','LS'].
+  group_by: user                # (str) The grouping strategy ranging in ['user', 'none'].
+  order: RO                     # (str) The ordering strategy ranging in ['RO', 'TO'].
+  mode: full                 # (str) The evaluation mode ranging in ['full','unixxx','popxxx','labeled'].
+
+load_col:
+  inter: ['user_id', 'poi_id', 'rating']
+  item: ['poi_id', 'name']
+  kg: ['head_id', 'relation_id', 'tail_id']
+  user_link: ['user_id', 'entity_id']
+  item_link: ['poi_id', 'entity_id']
+
+val_interval:
+  rating: "[3.5, inf)"

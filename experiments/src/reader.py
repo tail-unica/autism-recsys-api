@@ -22,6 +22,11 @@ class Reader:
 
     def link_user(self) -> pl.DataFrame:
         link = pl.read_csv(self.user_link, separator="\t", has_header=True)
+        user = pl.read_csv(self.user, separator="\t", has_header=True)
+        return link.join(user, on="user_id:token", how="inner").drop("user_id:token")
+
+    def read_inter(self) -> pl.DataFrame:
+        link = pl.read_csv(self.user_link, separator="\t", has_header=True)
         user = pl.read_csv(self.inter, separator="\t", has_header=True)
         place = pl.read_csv(self.item_link, separator="\t", has_header=True)
         df = link.join(user, on="user_id:token", how="inner").drop("user_id:token")
