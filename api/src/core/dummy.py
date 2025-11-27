@@ -67,6 +67,7 @@ def dummy_place_info_fetcher(place: str) -> dict:
 def dummy_place_recommender(
     user_id: str,
     preferences: tuple[str, ...] = (),
+    previous_recommendations: tuple[str, ...] = (),
     recommendation_count: int = 5,
     diversity_factor: float = 0.5,
     restrict_preferences: bool = False,

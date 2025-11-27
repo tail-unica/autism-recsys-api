@@ -207,6 +207,11 @@ class RecommendationRequest(BaseModel):
         description="List of user preferences for places", 
         example=["Monte dei Cappuccini", "Mercato"]
     )
+    previous_recommendations: Optional[List[str]] = Field(
+        default=None,
+        description="List of previously recommended places to avoid repetition", 
+        example=["Mole Antonelliana", "Piazza Castello"]
+    )
     recommendation_count: Optional[PositiveInt] = Field(
         default=5,
         description="Number of recommendations to return", 
