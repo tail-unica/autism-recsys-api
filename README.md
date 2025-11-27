@@ -1,6 +1,6 @@
-# PHaSE-API - Food Recommendation System
+# Autism-recsys-API
 
-PHaSE-API is a RESTful service that provides personalized food recommendations based on user preferences, restrictions, and other contextual information.
+Autism-recsys-API is an API service that provides recommendations for points of interest (POIs) tailored for individuals with autism. The API leverages machine learning models to deliver personalized recommendations based on user preferences and behaviors.
 
 ## Getting Started
 
@@ -9,9 +9,7 @@ These instructions will help you set up and run the PHaSE-API on your local mach
 ### Prerequisites
 
 - [Docker](https://www.docker.com/products/docker-desktop) installed on your system
-- [Pretrained Weights and Dataset](https://drive.google.com/drive/folders/1Vwa2Fje6Ltn-sNo6eaZSpRhgrEviSfzW?usp=sharing) downloaded and placed at the root of the project directory. It includes two folders:
-  - `checkpoint`: Contains the pretrained model weights, the preprocessed dataset, and the tokenizer.
-  - `data`: Contains the dataset used to retrieve food information.
+- [Pretrained Weights and Dataset]() **TODO**: will use a docker volume to mount these files
 
 ## Running with Docker
 
@@ -29,14 +27,15 @@ docker compose build
 
 ```bash
 # Run the container and map port 8100
-docker run -p 8100:8100 phase-api:latest
+docker compose up
 ```
 
 GPU support is enabled by default, enabled by using the following command (if it doesn't work, ensure you have the NVIDIA Container Toolkit installed):
 
 ```bash
-docker run --gpus all -p 8100:8100 phase-api:latest
-docker run --gpus '"device=1"' -p 8100:8100 phase-api:latest  # to use a specific GPU
+# TODO
+docker compose up --gpus all
+docker compose up --gpus '"device=1"'  # to use a specific GPU
 ```
 
 The API will now be accessible at [http://localhost:8100](http://localhost:8100)
