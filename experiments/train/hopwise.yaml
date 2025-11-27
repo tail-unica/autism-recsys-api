@@ -1,7 +1,8 @@
 epochs: 500
 train_batch_size: 512
 valid_metric: NDCG@10
-data_path: '../../../../recsysdatasets/'
+data_path: '../data/'
+dataset: 'autism'
 ITEM_ID_FIELD: 'poi_id'
 LABEL_FIELD: 'rating'
 metrics: ['recall', 'mrr', 'ndcg', 'hit', 'precision']

@@ -99,8 +99,8 @@ def get_inter(session: neo4j.Session) -> pl.DataFrame:
     
     data = []
     for record in result:
-        user_token = f"User.{md5(record['user_id'].encode()).hexdigest()}"
-        place_token = f"Place.{md5(record['place_id'].encode()).hexdigest()}"
+        user_token = f"{md5(record['user_id'].encode()).hexdigest()}"
+        place_token = f"{md5(record['place_id'].encode()).hexdigest()}"
         data.append({
             "user_id:token": user_token,
             "poi_id:token": place_token,

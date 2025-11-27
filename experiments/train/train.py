@@ -6,12 +6,10 @@ from hopwise.trainer import Trainer
 from hopwise.utils import init_seed, init_logger
 
 if __name__ == '__main__':
-
-    # configurations initialization
-    config = Config(model='BPR', dataset='ml-100k')
+    config = Config(model='BPR', dataset='autism', config_file_list=['hopwise.yaml'])
 
     # init random seed
-    init_seed(config['seed'], config['reproducibility'])
+    init_seed(seed=123, reproducibility=True)
 
     # logger initialization
     init_logger(config)
