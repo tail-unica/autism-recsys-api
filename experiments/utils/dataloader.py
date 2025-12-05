@@ -6,13 +6,15 @@ import os
 
 import neo4j
 import polars as pl
-from hashlib import md5
+
+def parse_id(token: str) -> str:
+    return token.replace(":", "_").replace("-", "_")
 
 def load_data(session: neo4j.Session, path: str) -> None:
     """Load data from Neo4j and save as CSV files with tab separator."""
     os.makedirs(path, exist_ok=True)
     
-    parse_df(get_kg(session)).write_csv(os.path.join(path, "autism.kg"), separator="\t")
+    parse_df(get_kg(session, yield_custom_id=["SensoryFeature", "Category"])).write_csv(os.path.join(path, "autism.kg"), separator="\t")
     parse_df(get_inter(session)).write_csv(os.path.join(path, "autism.inter"), separator="\t")
     parse_df(get_user(session)).write_csv(os.path.join(path, "autism.user"), separator="\t")
     parse_df(get_item(session)).write_csv(os.path.join(path, "autism.item"), separator="\t")
@@ -52,7 +54,7 @@ def parse_df(df: pl.DataFrame) -> pl.DataFrame:
     
     return df
 
-def get_kg(session: neo4j.Session) -> pl.DataFrame:
+def get_kg(session: neo4j.Session, yield_custom_id: list[str] = None) -> pl.DataFrame:
     # return every relation in the neo4j database as a triple (source, relation, target)
     import hashlib
     
@@ -74,11 +76,26 @@ def get_kg(session: neo4j.Session) -> pl.DataFrame:
             labels(b)[0] AS target_type
     """
     result = session.run(query, allowed_relations=allowed_relations)
+
+    id_map = {}
+    if yield_custom_id is not None:
+        labels_filter = "|".join(yield_custom_id)
+        query_id = f"""
+            MATCH (n:{labels_filter})
+            RETURN elementId(n) AS node_id, n.id AS custom_id
+        """
+        result_id = session.run(query_id)
+        id_map = {record["node_id"]: record["custom_id"] for record in result_id}
     
     data = []
     for record in result:
-        source_token = f"{record['source_type']}.{md5(record['source_id'].encode()).hexdigest()}"
-        target_token = f"{record['target_type']}.{md5(record['target_id'].encode()).hexdigest()}"
+        def parse_id_if_custom(node_id):
+            if yield_custom_id is not None and node_id in id_map:
+                return str(id_map[node_id])
+            else:
+                return str(parse_id(node_id))
+        source_token = f"{record['source_type']}.{parse_id_if_custom(record['source_id'])}"
+        target_token = f"{record['target_type']}.{parse_id_if_custom(record['target_id'])}"
         data.append({
             "head_id:token": source_token,
             "relation_id:token": record["relation"],
@@ -99,8 +116,8 @@ def get_inter(session: neo4j.Session) -> pl.DataFrame:
     
     data = []
     for record in result:
-        user_token = f"{md5(record['user_id'].encode()).hexdigest()}"
-        place_token = f"{md5(record['place_id'].encode()).hexdigest()}"
+        user_token = f"{parse_id(record['user_id'])}"
+        place_token = f"{parse_id(record['place_id'])}"
         data.append({
             "user_id:token": user_token,
             "poi_id:token": place_token,
@@ -138,7 +155,7 @@ def get_attr(session: neo4j.Session, entity_type: str) -> pl.DataFrame:
     column_types = {}  # Track the type suffix for each key
     
     for record in result:
-        entity_token = f"{md5(record['entity_id'].encode()).hexdigest()}"
+        entity_token = f"{parse_id(record['entity_id'])}"
         row = {token_field: entity_token}
         
         # Add each attribute as a separate column
@@ -150,6 +167,8 @@ def get_attr(session: neo4j.Session, entity_type: str) -> pl.DataFrame:
                 # Determine the new type for this key
                 if isinstance(value, float):
                     new_type = 'float'
+                elif isinstance(value, bool):
+                    new_type = 'token'
                 elif isinstance(value, int):
                     new_type = 'int'
                 elif isinstance(value, list):
@@ -209,7 +228,7 @@ def get_link(session: neo4j.Session, entity_type: str = 'user') -> pl.DataFrame:
     
     data = []
     for record in result:
-        entity_token = f"{md5(record['entity_id'].encode()).hexdigest()}"
+        entity_token = f"{parse_id(record['entity_id'])}"
         data.append({
             token_field: entity_token,
             "entity_id:token": f"{label}.{entity_token}"
