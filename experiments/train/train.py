@@ -1,12 +1,26 @@
+import faulthandler
+faulthandler.enable()  # stampa traceback C/Python in caso di crash
+
 from logging import getLogger
 from hopwise.config import Config
 from hopwise.data import create_dataset, data_preparation
-from hopwise.model.general_recommender import BPR
+from hopwise.model.path_language_modeling_recommender.pearlm import PEARLM
 from hopwise.trainer import Trainer
 from hopwise.utils import init_seed, init_logger
+from hopwise.quick_start.quick_start import run_hopwise, run
 
 if __name__ == '__main__':
-    config = Config(model='BPR', dataset='autism', config_file_list=['hopwise.yaml'])
+    run_hopwise(
+        model='PEARLM',
+        dataset='autism', # 'autism' 'ml-100k'
+        run='train',
+        config_file_list=['hopwise.yaml'], # 'hopwise.yaml'
+        saved=False,
+        checkpoint=None
+    )
+
+    """
+    config = Config(model='PEARLM', dataset='autism', config_file_list=['hopwise.yaml'])
 
     # init random seed
     init_seed(seed=123, reproducibility=True)
@@ -24,9 +38,9 @@ if __name__ == '__main__':
 
     # dataset splitting
     train_data, valid_data, test_data = data_preparation(config, dataset)
-
+    
     # model loading and initialization
-    model = BPR(config, train_data.dataset).to(config['device'])
+    model = PEARLM(config, train_data.dataset).to(config['device'])
     logger.info(model)
 
     # trainer loading and initialization
@@ -37,4 +51,4 @@ if __name__ == '__main__':
 
     # model evaluation
     test_result = trainer.evaluate(test_data)
-    print(test_result)
+    print(test_result)"""

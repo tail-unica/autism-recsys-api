@@ -1,42 +1,26 @@
-# Logger
-state: DEBUG
-
-# Dataset
-dataset: autism
-data_path: ../data
-save_dataset: True
-save_dataloaders: True
-USER_ID_FIELD: user_id
-ITEM_ID_FIELD: poi_id
-LABEL_FIELD: rating
-load_col:
-  inter: ['user_id', 'poi_id', 'rating']
-  kg: ['head_id', 'relation_id', 'tail_id']
-  item_link: ['poi_id', 'entity_id']
-  user_link: ['user_id', 'entity_id']
-  item: ['poi_id', 'name']
-  user: ['user_id', 'autism']
-  # link: ['item_id', 'entity_id']
-
 # Data processing
 user_inter_num_interval: '[5,inf)'
 item_inter_num_interval: '[5,inf)'
 # entity_kg_num_interval: '[30,inf)'
 relation_kg_num_interval: '[1,inf)'
 kg_reverse_r: True
-# path_hop_length: 3
+path_hop_length: 3
 MAX_PATHS_PER_USER: 50
 path_sample_args:
   collaborative_path: True
-  strategy: simple-ui
+  strategy: constrained-rw #metapath
   restrict_by_phase: True
   parallel_max_workers: 0
   MAX_RW_PATHS_PER_HOP: 1
-val_interval:
-  rating: "[3.5, inf)"
+metapaths: ~
+
+path_constraint: [
+  [[null, 'user'], ["[UI-Relation]","entity"], ["[UI-Relation]","entity"], ["[UI-Relation]","entity"]],
+  [[null, 'user'], ["[UI-Relation]","entity"], ["film.film.prequel","entity"], ["film.film.prequel_r","entity"]],
+]
 
 # Training
-epochs: 30
+epochs: 5
 train_batch_size: 2048
 learner: adam
 learning_rate: 0.001
@@ -60,7 +44,7 @@ eval_args:                      # (dict) 4 keys: group_by, order, split, and mod
 embedding_size: 64
 num_heads: 4
 num_layers: 2
-# sequence_postprocessor: BeamSearch
+sequence_postprocessor: BeamSearch
 topk: 10
 
 # Path Generation

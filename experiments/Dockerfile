@@ -1,15 +1,22 @@
 FROM python:3.10-slim
+RUN echo 'export PS1="autism:\w\$ "' >> /root/.bashrc
 
-WORKDIR /src 
+# NOTE: remove git installation after hopwise is published to PyPI
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git curl ca-certificates libgomp1 \
+ && rm -rf /var/lib/apt/lists/*
+
+ADD https://astral.sh/uv/install.sh /uv-installer.sh
+RUN sh /uv-installer.sh && rm /uv-installer.sh
+ENV PATH="/root/.local/bin/:$PATH"
+
+WORKDIR /app
 
 COPY pyproject.toml .
-RUN pip install .
+# COPY uv.lock .
+RUN pip install --upgrade pip
+RUN uv pip install --system -p python3.10 .
+# -- or instead of pip install
+# RUN uv sync
 
-# CMD ["python", "main.py"]
-
-# docker build -t python-exp .
-# docker run -it --rm -v $(pwd):/src -w /src python-exp bash
-# docker run -it --rm -v $(pwd):/src -w /src python-exp
-
-# ---- COMPOSE ----
-# docker compose exec create_db bash -c "python3 main.py"
+# ENV DGLBACKEND=pytorch
