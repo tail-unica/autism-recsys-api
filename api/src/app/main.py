@@ -33,3 +33,11 @@ app.include_router(recommendation.router, tags=["recommendation"])
 @app.get("/")
 async def root():
     return RedirectResponse(url="/docs")
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for Docker healthcheck."""
+    if not app.state.service.is_ready():
+        from fastapi import HTTPException
+        raise HTTPException(status_code=503, detail="Service not ready")
+    return {"status": "healthy"}
