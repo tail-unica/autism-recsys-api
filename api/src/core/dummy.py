@@ -1,3 +1,7 @@
+"""
+Module providing dummy implementations for place info fetching and recommendation.
+"""
+
 from typing import Dict, Any, Literal
 import numpy.random as random
 
