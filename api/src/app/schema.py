@@ -65,7 +65,7 @@ class FeatureSet(RootModel[List[Feature[EnumType]]], Generic[EnumType]):
         if not self.root:
             raise ValueError("At least one feature must be provided.")
 
-        enum_cls = self.__pydantic_generic_metadata__["args"][0]
+        enum_cls = type(self.root[0].feature_name)
 
         required: Set[EnumType] = set(enum_cls)
         provided: Set[EnumType] = {f.feature_name for f in self.root}

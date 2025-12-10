@@ -28,11 +28,11 @@ async def get_place_info(
     **place**: Name of the place to get information about
     **model**: Model to use for fetching information
     """
-    service._logger.info(f"API get_place_info: place({place})")
+    service.logger.info(f"API get_place_info: place({place})")
     
     info_response = await service.fetch_place_info(place)
 
-    service._logger.info(f"API get_place_info: response({info_response})")
+    service.logger.info(f"API get_place_info: response({info_response})")
 
     if not info_response:
         raise HTTPException(
@@ -57,11 +57,11 @@ async def search_places(
     **distance**: Optional maximum distance (in meters) from the user position
     **categories**: Optional list of category IDs to filter results
     """
-    service._logger.info(f"API search_places: SearchRequest({request})")
+    service.logger.info(f"API search_places: SearchRequest({request})")
 
     search_results = await service.search_places(query=request.dict())
 
-    service._logger.info(
+    service.logger.info(
         "API search_places: response:\n%s",
         json.dumps(
             search_results if not isinstance(search_results, str) else json.loads(search_results),

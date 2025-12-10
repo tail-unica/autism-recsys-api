@@ -26,7 +26,7 @@ async def get_recommendation(
     Place recommendation endpoint.
     """
 
-    service._logger.info(f"API get_recommendation: RecommendationRequest({request})")
+    service.logger.info(f"API get_recommendation: RecommendationRequest({request})")
 
     recommender_response = await service.recommend(payload=request.dict())
 

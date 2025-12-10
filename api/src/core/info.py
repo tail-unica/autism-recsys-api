@@ -1,5 +1,6 @@
 import neo4j
 from typing import List
+from src.core.logger import logger
 
 def _parse_geojson_from_neo4j_point(point: neo4j.spatial.Point, properties: dict = None) -> dict:
     """Parse a Neo4j Point object into a GeoJSON dictionary."""
@@ -27,8 +28,9 @@ def _parse_lon_lat_from_geojson(geojson: dict) -> tuple:
         pass
     return None, None
 
-def fetch_place_info(session: neo4j.Session, info: str, logger = None) -> dict:
+def fetch_place_info(session: neo4j.Session, info: str) -> dict:
     """Fetch place information from the database based on the exact provided place name."""
+    
     result = session.run(
         "MATCH (p:Place {name: $info}) "
         "OPTIONAL MATCH (p)-[:BELONGS_TO_CATEGORY]->(c:Category) "
@@ -39,8 +41,7 @@ def fetch_place_info(session: neo4j.Session, info: str, logger = None) -> dict:
         info=info,
     )
     record = result.single()
-    if logger:
-        logger.info(f"Fetched place info for '{info}': {record}")
+    logger.info(f"Fetched place info for '{info}': {record}")
     if record:
         return {
             "place": record["name"],
@@ -60,8 +61,7 @@ def fetch_place_info(session: neo4j.Session, info: str, logger = None) -> dict:
             ],
         }
     else:
-        if logger:
-            logger.warning(f"No place found with name '{info}'")
+        logger.warning(f"No place found with name '{info}'")
         return None
 
 def search(
@@ -70,8 +70,7 @@ def search(
     limit: int = 10,
     position: dict = None,
     distance: float = 1000.0, # in meters
-    categories: list = None,
-    logger = None
+    categories: list = None
 ) -> List[dict]:
     """Returns a list of places names based on the search query and optional filters.
     Integra una seconda fase di ricerca semantica (full-text) quando query non è vuoto e i risultati iniziali sono insufficienti.
@@ -106,8 +105,7 @@ def search(
 
     # TODO: improve randomization strategy for large datasets
     if not normalized_query:
-        if logger:
-            logger.info("No search query provided, returning random places")
+        logger.info("No search query provided, returning random places")
         cypher += "WITH p ORDER BY rand() "
 
     cypher += (
@@ -115,8 +113,7 @@ def search(
         "LIMIT $limit"
     )
     params["limit"] = limit
-    if logger:
-        logger.info(f"Querying (primary): {cypher} with params: {params}")
+    logger.info(f"Querying (primary): {cypher} with params: {params}")
 
     # FIX: evitare conflitto 'query' con argomento posizionale di Session.run()
     result = session.run(cypher, parameters=params)
@@ -132,8 +129,7 @@ def search(
                 "RETURN node.name AS name "
                 "LIMIT $remaining"
             )
-            if logger:
-                logger.info(f"Querying (semantic fallback): {semantic_cypher} with params: {{'query': '{normalized_query}', 'remaining': {remaining}}}")
+            logger.info(f"Querying (semantic fallback): {semantic_cypher} with params: {{'query': '{normalized_query}', 'remaining': {remaining}}}")
             try:
                 semantic_result = session.run(
                     semantic_cypher,
@@ -146,9 +142,8 @@ def search(
                         names.append(n)
                         seen.add(n)
             except neo4j.exceptions.ClientError as e:
-                # Index mancante o altro errore
-                if logger:
-                    logger.warning(f"Semantic search skipped (full-text index missing or error): {e}")
+                # No index found or other error
+                logger.warning(f"Semantic search skipped (full-text index missing or error): {e}")
 
     # TODO: futura estensione: indice vettoriale per embedding semantiche (Neo4j vector indexes)
     return [{"name": n} for n in names]
