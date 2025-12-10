@@ -1,55 +1,20 @@
 data:
-  data_dir: "data/autism"
-  csv_place_data: "turin_autism.item"
+  dataset: "autism"
+  csv_place_data: "autism.item"
   csv_place_col_name: "name:token_seq"
   csv_separator: "\t"
-  recommender_dataset: "autism"
 
-core:
-  healthiness_metric: "nutri_group"
-  score_map:
-    A: Excellent
-    B: Good
-    C: Fair
-    D: Poor
-    E: Inadequate
-  alternative_distance_weight: 0.8
-  info_columns:
-    - name
-    - food_item_type
-    - healthiness_score_groups
-    - environmental_impact
-    - nutritional_values
-    - nutritional_value_groups
-    - flat_ingredients
-    - recipe_url
+# TODO: Update with dynamically based dataset creation (see project milestones)
 
-semantic_search:
-  model_name: "all-MiniLM-L6-v2"
-  embedding_dim: ~  # ~ indicates automatic detection
-  max_distance_threshold: 1.0  # with FAISS complex to set a robust threshold
-  # Use a threshold of 1.0 to allow all results, leaving FAISS retrieve items at any cosine distance
-  use_hierarchical: true
-  n_clusters: 50
-  force_recompute: false
-  batch_size: 40960
-  cache_dir: "embeddings_cache"
-
-recommender:
+model:
   model_name: "PEARLM"
-  device: "cuda"  # or "cpu"
-  hopwise_checkpoint_file: "checkpoint/hopwise-distilgpt2-PEARLM-Jul-31-2025_19-44-04.pth"
+  device: "cuda" # "cuda" or "cpu"
+  hopwise_checkpoint_file: "checkpoint/hopwise-distilgpt2-PEARLM-Dec-05-2025_14-55-01.pth"
   diversity_factor: 0.3
   propagate_connected_entities: true  # If true, entities connected with restricted KG elements will also be restricted
   compile_mode: "default"  # Options: "default", "reduce-overhead", "max-autotune"
   remove_user_tokens_from_sequences: true  # If true, user tokens will be removed from sequences in zero-shot recommendation
   tag_offset: 0.1  # Offset for accepting tag matching vs other matching in zero-shot recommendation
-
-api:
-  host: "0.0.0.0"
-  port: 8100
-  title: "AutismAPI"
-  description: "Place recommendation for People w/ ASD"
 
 logging:
   level: "INFO"
