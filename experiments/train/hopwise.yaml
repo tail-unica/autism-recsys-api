@@ -19,10 +19,10 @@ load_col:
   # link: ['item_id', 'entity_id']
 
 # Data processing
-user_inter_num_interval: '[5,inf)'
-item_inter_num_interval: '[5,inf)'
+#user_inter_num_interval: '[5,inf)'
+#item_inter_num_interval: '[5,inf)'
 # entity_kg_num_interval: '[30,inf)'
-relation_kg_num_interval: '[1,inf)'
+#relation_kg_num_interval: '[1,inf)'
 kg_reverse_r: True
 # path_hop_length: 3
 MAX_PATHS_PER_USER: 50
@@ -32,11 +32,11 @@ path_sample_args:
   restrict_by_phase: True
   parallel_max_workers: 0
   MAX_RW_PATHS_PER_HOP: 1
-val_interval:
-  rating: "[3.5, inf)"
+#val_interval:
+#  rating: "[3.5, inf)"
 
 # Training
-epochs: 30
+epochs: 10
 train_batch_size: 2048
 learner: adam
 learning_rate: 0.001

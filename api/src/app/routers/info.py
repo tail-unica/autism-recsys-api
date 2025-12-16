@@ -1,5 +1,6 @@
 from typing import Literal, Optional, List, Dict, Any
 import json
+from pprint import pformat
 
 from fastapi import APIRouter, Request, Depends, HTTPException, status, Query
 
@@ -28,11 +29,8 @@ async def get_place_info(
     **place**: Name of the place to get information about
     **model**: Model to use for fetching information
     """
-    service.logger.info(f"API get_place_info: place({place})")
     
     info_response = await service.fetch_place_info(place)
-
-    service.logger.info(f"API get_place_info: response({info_response})")
 
     if not info_response:
         raise HTTPException(
@@ -59,7 +57,7 @@ async def search_places(
     """
     service.logger.info(f"API search_places: SearchRequest({request})")
 
-    search_results = await service.search_places(query=request.dict())
+    search_results = await service.search_places(query=request.model_dump())
 
     service.logger.info(
         "API search_places: response:\n%s",

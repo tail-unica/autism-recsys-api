@@ -1,6 +1,8 @@
 import neo4j
 from typing import List
 from src.core.logger import logger
+from pprint import pformat
+
 
 def _parse_geojson_from_neo4j_point(point: neo4j.spatial.Point, properties: dict = None) -> dict:
     """Parse a Neo4j Point object into a GeoJSON dictionary."""
@@ -31,6 +33,7 @@ def _parse_lon_lat_from_geojson(geojson: dict) -> tuple:
 def fetch_place_info(session: neo4j.Session, info: str) -> dict:
     """Fetch place information from the database based on the exact provided place name."""
     
+    logger.info(f"Fetching place info for '{info}' from database...")
     result = session.run(
         "MATCH (p:Place {name: $info}) "
         "OPTIONAL MATCH (p)-[:BELONGS_TO_CATEGORY]->(c:Category) "
@@ -41,8 +44,8 @@ def fetch_place_info(session: neo4j.Session, info: str) -> dict:
         info=info,
     )
     record = result.single()
-    logger.info(f"Fetched place info for '{info}': {record}")
     if record:
+        logger.debug(f"Fetched place info for '{info}':\n{pformat(record)}")
         return {
             "place": record["name"],
             "category": record["category_id"],

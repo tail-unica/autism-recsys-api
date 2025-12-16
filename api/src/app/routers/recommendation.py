@@ -1,4 +1,5 @@
 from typing import Literal, Optional
+from pprint import pformat
 
 from fastapi import APIRouter, Request, Depends, HTTPException, status
 
@@ -26,9 +27,10 @@ async def get_recommendation(
     Place recommendation endpoint.
     """
 
-    service.logger.info(f"API get_recommendation: RecommendationRequest({request})")
+    service.logger.info(f"RecommendationRequest from {request.user_id} with preferences: {request.preferences}")
+    service.logger.debug(f"RecommendationRequest:\n{pformat(request.model_dump())}")
 
-    recommender_response = await service.recommend(payload=request.dict())
+    recommender_response = await service.recommend(payload=request.model_dump())
 
     if not recommender_response:
         raise HTTPException(

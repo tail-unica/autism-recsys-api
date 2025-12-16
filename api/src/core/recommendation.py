@@ -59,24 +59,6 @@ def prepare_recommender_and_raw_inputs_existing_user(
     return raw_inputs
 
 
-def prepare_zero_shot_raw_inputs(preferences, dataset):
-    raw_inputs = [
-        dataset.path_token_separator.join(
-            [
-                dataset.tokenizer.bos_token,
-                (
-                    PathLanguageModelingTokenType.ITEM.token
-                    if dataset.field2id_token[dataset.entity_field][pref] in dataset.entity2item
-                    else PathLanguageModelingTokenType.ENTITY.token
-                )
-                + str(pref),
-            ]
-        )
-        for pref in preferences
-    ]
-
-    return raw_inputs
-
 def prepare_recommender_and_raw_inputs_zero_shot(  # noqa: PLR0913
     recommender,
     dataset,
@@ -84,20 +66,32 @@ def prepare_recommender_and_raw_inputs_zero_shot(  # noqa: PLR0913
     zero_shot_constrained_logits_processors_list,
     preferences=None,
     previous_recommendations=None,
-    hard_restrictions=None,
-    soft_restrictions=None,
-    restrict_preference_graph=False,
+    aversions=None,
 ):
+    # TODO: Implements non compatible place as hard restrictions
+    # TODO: Implements aversions as hard restrictions
 
     if not preferences:
         logger.error("No preferences provided for zero-shot recommendation.")
         return None
 
-    raw_inputs = prepare_zero_shot_raw_inputs(preferences, dataset)
+    entity_mapping = dataset.field2token_id[dataset.iid_field]
+    preferences = [entity_mapping.get(m, m) for m in preferences]
+    
+    raw_inputs = [
+        dataset.path_token_separator.join(
+            [
+                dataset.tokenizer.bos_token,
+                PathLanguageModelingTokenType.ITEM.token + str(pref)
+            ]
+        )
+        for pref in preferences
+    ]
 
     recommender.sequence_postprocessor = zero_shot_sequence_postprocessor
     recommender.logits_processor_list = zero_shot_constrained_logits_processors_list
 
+    """
     if previous_recommendations:
         previous_recommendations = id2tokenizer_token(dataset, previous_recommendations)
 
@@ -119,7 +113,7 @@ def prepare_recommender_and_raw_inputs_zero_shot(  # noqa: PLR0913
                             hard_restrictions=tokenized_hard_restrictions,
                             soft_restrictions=tokenized_soft_restrictions,
                         )
-                    )
+                    )"""
 
     return raw_inputs
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 import asyncio
 from typing import Any, Dict, Optional
+from pprint import pformat
 from neo4j import GraphDatabase
 import os
 import numpy as np
@@ -9,7 +10,7 @@ from src.core.utils import get_cfg
 from src.core.logger import logger
 from src.core.dummy import dummy_place_info_fetcher, dummy_place_recommender
 from src.core.info import fetch_place_info
-from src.core.data import load_data
+from src.core.data import load_data, get_item_ids
 from src.core.recommendation import (
     prepare_recommender_and_raw_inputs_existing_user,
     prepare_recommender_and_raw_inputs_zero_shot,
@@ -57,23 +58,23 @@ class RecommenderService:
         """Initialize the recommender service with Neo4j database, model, and processors."""
         self.cfg = get_cfg()
 
-        logger.info("RecommenderService: Starting initialization.")
+        logger.info("Starting recommendation model initialization...")
 
         # ===== Neo4j Database Setup =====
+        logger.debug("Setting up Neo4j driver...")
         self._neo4j_driver = GraphDatabase.driver(
             os.getenv("NEO4J_URI"),
             auth=(os.getenv("NEO4J_USER"), os.getenv("NEO4J_PASSWORD")),
         )
-        logger.info("Connected to Neo4j database.")
 
         # ===== Load and prepare dataset =====
-        logger.info("Loading dataset...")
+        logger.debug("Loading dataset...")
         data_dir = os.path.join(os.path.dirname(__file__), "data")
         with self._neo4j_driver.session() as session:
             load_data(session, data_dir, dataset=self.cfg.data.dataset)
 
         # ===== Load model checkpoint and configuration =====
-        logger.info("Loading checkpoint...")
+        logger.debug("Loading checkpoint...")
         checkpoint = torch.load(
             self.cfg.model.hopwise_checkpoint_file, 
             map_location=self.cfg.model.device, 
@@ -86,13 +87,13 @@ class RecommenderService:
         config._set_env_behavior()
 
         # ===== Initialize dataset and data splits =====
-        logger.info("Initializing dataset...")
+        logger.debug("Initializing dataset...")
         init_seed(config["seed"], config["reproducibility"])
         self.dataset = create_dataset(config)
         train_data, valid_data, test_data = data_preparation(config, self.dataset)
 
         # ===== Create recommender model and load weights =====
-        logger.info("Initializing recommender and applying checkpoint weights...")
+        logger.debug("Initializing recommender and applying checkpoint weights...")
         self.recommender = get_model(config["model"])(config, train_data.dataset)
         self.recommender = self.recommender.to(device=self.cfg.model.device, dtype=config["weight_precision"])
 
@@ -103,11 +104,11 @@ class RecommenderService:
         self.dataset._tokenizer = AutoTokenizer.from_pretrained(hf_checkpoint_file)
 
         # ===== Model Compilation and Post-processing Setup =====
-        logger.info("Compiling recommender for performance...")
+        logger.debug("Compiling recommender for performance...")
         self.recommender = torch.compile(self.recommender, mode=self.cfg.model.compile_mode)
 
         # ===== Initialize post-processors for sequence scoring =====
-        logger.info("Creating post-processors and logits processors for recommendation generation...")
+        logger.debug("Creating post-processors and logits processors for recommendation generation...")
         self.existing_user_cumulative_sequence_postprocessor = CumulativeSequenceScorePostProcessor(
             self.dataset.tokenizer, self.dataset.get_user_used_ids(), self.dataset.item_num
         )
@@ -153,7 +154,7 @@ class RecommenderService:
 
         # ===== Mark service as ready =====
         self._ready = True
-        logger.info("RecommenderService: Initialization complete.")
+        logger.info("Completed recommendation model initialization.")
 
     def is_ready(self) -> bool:
         return self._ready
@@ -211,7 +212,11 @@ class RecommenderService:
             output_scores=True,
         )
 
-        logger.info(f"Generating recommendations with parameters: {kwargs}")
+        # ===== Get preference item IDs =====
+        with self._neo4j_driver.session() as session:
+            preferences_ids = get_item_ids(session, preferences) if preferences else None
+
+        logger.debug(f"Generating recommendations with parameters:\n{pformat(kwargs)}")
 
         # ===== Prepare raw inputs based on user existence =====
         if user_id in self.dataset.field2id_token[self.dataset.uid_field]:
@@ -225,23 +230,26 @@ class RecommenderService:
             )
         else:
             logger.info(f"User {user_id} does not exist in dataset, using zero-shot sequence postprocessor.")
+            logger.debug(f"Preparing raw inputs for zero-shot recommendation with preferences: {preferences_ids}")
             raw_inputs = prepare_recommender_and_raw_inputs_zero_shot(
                 self.recommender,
                 self.dataset,
                 self.zero_shot_sequence_postprocessor,
                 self.zero_shot_constrained_logits_processors_list,
-                preferences=preferences,
+                preferences=preferences_ids, # NOTE
                 previous_recommendations=previous_recommendations,
-                hard_restrictions=hard_restrictions,
-                soft_restrictions=soft_restrictions,
+                aversions=aversions,
             )
 
         # ===== Tokenize inputs =====
-        logger.info("Tokenizing raw inputs for recommendation generation...")
+        logger.debug(f"Tokenizing raw inputs for recommendation generation with raw inputs: {raw_inputs}")
         inputs = self.dataset.tokenizer(raw_inputs, return_tensors="pt", add_special_tokens=False).to(self.cfg.model.device)
         inputs = Interaction(inputs.data)
+        logger.debug(f"Tokenized inputs: {inputs['input_ids'].detach().cpu().flatten().tolist()}")
 
         # ===== Validate inputs =====
+        logger.debug(torch.tensor(self.dataset.tokenizer.all_special_ids, device=inputs["input_ids"].device))
+
         valid_inputs_mask = torch.isin(
             inputs["input_ids"][:, 1:], torch.tensor(self.dataset.tokenizer.all_special_ids, device=inputs["input_ids"].device)
         ).squeeze(dim=1)
@@ -260,7 +268,7 @@ class RecommenderService:
             return None
 
         # ===== Process outputs =====
-        logger.info("Processing outputs to get recommendations...")
+        logger.debug("Processing outputs to get recommendations...")
         max_new_tokens = self.recommender.token_sequence_length - inputs["input_ids"].size(1)
         _, sequences = self.recommender.sequence_postprocessor.get_sequences(
             outputs, max_new_tokens=max_new_tokens, previous_recommendations=previous_recommendations
@@ -269,7 +277,7 @@ class RecommenderService:
         # ===== Select top recommendations =====
         top_rec_index = sorted(range(len(sequences)), key=lambda i: sequences[i][2], reverse=True)[:recommendation_count]
         sequences = [sequences[i] for i in top_rec_index]
-        unpacked_sequences = self.unpack_recommendation_sequences(sequences, user_id)
+        unpacked_sequences = unpack_recommendation_sequences_tuples(sequences, self.dataset, user_id)
         if unpacked_sequences is None:
             return None
 

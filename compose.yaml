@@ -55,11 +55,12 @@ services:
       - API_URL=http://api:8100
     ports:
       - "7860:7860"
-    depends_on:
-      api:
-        condition: service_healthy
-    networks:
-      - frontend
+      - "80:80"
+    #depends_on: #NOTE: test_react_frontend
+    #  api:
+    #    condition: service_healthy
+    #networks:
+    #  - frontend
 
   # DEVELOPMENT ONLY
   experiments:

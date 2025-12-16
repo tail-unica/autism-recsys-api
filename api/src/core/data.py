@@ -9,7 +9,8 @@ import neo4j
 import polars as pl
 
 def parse_id(token: str) -> str:
-    return token.replace(":", "_").replace("-", "_")
+    token = token.replace(":", "_").replace("-", "_")
+    return token.split("_")[-1]
 
 def load_data(session: neo4j.Session, path: str, dataset: str = "autism") -> None:
     """Load data from Neo4j and save as CSV files with tab separator."""
@@ -248,3 +249,35 @@ def get_user_link(session: neo4j.Session) -> pl.DataFrame:
 
 def get_item_link(session: neo4j.Session) -> pl.DataFrame:
     return get_link(session, 'item')
+
+
+def get_item_ids(
+    session: neo4j.Session,
+    item_name: list[str]
+) -> list[str]:
+    """
+    Resolve a list of item names to their Place node ids (tokenized elementId).
+
+    Args:
+        session: Neo4j session.
+        item_name: List of item names to resolve.
+    Returns:
+        List of tokenized ids corresponding to the input order. Missing names are skipped.
+    """
+    if not item_name:
+        return []
+
+    query = """
+        MATCH (p:Place)
+        WHERE p.name IN $names
+        RETURN p.name AS name, elementId(p) AS node_id
+    """
+    result = session.run(query, names=item_name)
+
+    # Build a name -> tokenized id map
+    name_to_id = {}
+    for record in result:
+        name_to_id[record["name"]] = parse_id(record["node_id"])
+
+    # Preserve input order, skip names not found
+    return [name_to_id[n] for n in item_name if n in name_to_id]

@@ -18,6 +18,11 @@ def get_cfg():
     with initialize(config_path=CONFIG_PATH, version_base=None):
         return compose(config_name="default")
 
+class CustomFormatter(logging.Formatter):
+    def format(self, record):
+        record.levelname_c = f"{record.levelname}:"
+        return super().format(record)
+
 @lru_cache(maxsize=1)
 def get_logger() -> logging.Logger:
     cfg = get_cfg()
@@ -30,11 +35,11 @@ def get_logger() -> logging.Logger:
     if not logger.handlers:
         fh = logging.FileHandler(logfile)
         fh.setLevel(logging.DEBUG)
-        fh.setFormatter(logging.Formatter(cfg.logging.format))
+        fh.setFormatter(CustomFormatter(cfg.logging.format))
 
         sh = logging.StreamHandler()
         sh.setLevel(cfg.logging.level)
-        sh.setFormatter(logging.Formatter(cfg.logging.format))
+        sh.setFormatter(CustomFormatter(cfg.logging.format))
 
         logger.addHandler(fh)
         logger.addHandler(sh)

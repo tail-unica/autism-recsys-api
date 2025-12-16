@@ -9,7 +9,7 @@ data:
 model:
   model_name: "PEARLM"
   device: "cuda" # "cuda" or "cpu"
-  hopwise_checkpoint_file: "checkpoint/hopwise-distilgpt2-PEARLM-Dec-10-2025_15-41-50.pth"
+  hopwise_checkpoint_file: "checkpoint/hopwise-distilgpt2-PEARLM-Dec-16-2025_10-37-07.pth"
   diversity_factor: 0.3
   propagate_connected_entities: true  # If true, entities connected with restricted KG elements will also be restricted
   compile_mode: "default"  # Options: "default", "reduce-overhead", "max-autotune"
@@ -17,5 +17,6 @@ model:
   tag_offset: 0.1  # Offset for accepting tag matching vs other matching in zero-shot recommendation
 
 logging:
-  level: "INFO"
-  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  level: "DEBUG"
+  # format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  format: "%(levelname_c)-9s %(message)s"
