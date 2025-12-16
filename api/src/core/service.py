@@ -191,9 +191,9 @@ class RecommenderService:
         previous_recommendations = payload.get("previous_recommendations", [])
         recommendation_count = payload.get("recommendation_count", 5)
         diversity_factor = payload.get("diversity_factor", 0.5)
-        hard_restrictions = payload.get("hard_restrictions", None)
-        soft_restrictions = payload.get("soft_restrictions", None)
-        restrict_preference_graph = payload.get("restrict_preferences", False)
+        restrict_preferences = payload.get("restrict_preferences", False)
+        # soft_restrictions = payload.get("soft_restrictions", None)
+        aversions = payload.get("hard_restrictions", None)
         
 
         # ===== Prepare generation parameters =====
@@ -234,7 +234,6 @@ class RecommenderService:
                 previous_recommendations=previous_recommendations,
                 hard_restrictions=hard_restrictions,
                 soft_restrictions=soft_restrictions,
-                restrict_preference_graph=restrict_preference_graph,
             )
 
         # ===== Tokenize inputs =====

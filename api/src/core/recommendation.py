@@ -59,7 +59,7 @@ def prepare_recommender_and_raw_inputs_existing_user(
     return raw_inputs
 
 
-def prepare_zero_shot_raw_inputs(matched_preferences, dataset):
+def prepare_zero_shot_raw_inputs(preferences, dataset):
     raw_inputs = [
         dataset.path_token_separator.join(
             [
@@ -72,7 +72,7 @@ def prepare_zero_shot_raw_inputs(matched_preferences, dataset):
                 + str(pref),
             ]
         )
-        for pref in matched_preferences
+        for pref in preferences
     ]
 
     return raw_inputs
@@ -120,12 +120,6 @@ def prepare_recommender_and_raw_inputs_zero_shot(  # noqa: PLR0913
                             soft_restrictions=tokenized_soft_restrictions,
                         )
                     )
-
-                if restrict_preference_graph:
-                    tokenized_preferences = id2tokenizer_token(dataset, preferences)
-                    restrictions["restricted_candidates"] = tokenized_preferences
-
-                    logit_processor.set_restrictions(**restrictions)
 
     return raw_inputs
 

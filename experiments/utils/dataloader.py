@@ -8,7 +8,8 @@ import neo4j
 import polars as pl
 
 def parse_id(token: str) -> str:
-    return token.replace(":", "_").replace("-", "_")
+    token = token.replace(":", "_").replace("-", "_")
+    return token.split("_")[-1]
 
 def load_data(session: neo4j.Session, path: str) -> None:
     """Load data from Neo4j and save as CSV files with tab separator."""

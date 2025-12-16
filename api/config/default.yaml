@@ -9,7 +9,7 @@ data:
 model:
   model_name: "PEARLM"
   device: "cuda" # "cuda" or "cpu"
-  hopwise_checkpoint_file: "checkpoint/hopwise-distilgpt2-PEARLM-Dec-05-2025_14-55-01.pth"
+  hopwise_checkpoint_file: "checkpoint/hopwise-distilgpt2-PEARLM-Dec-10-2025_15-41-50.pth"
   diversity_factor: 0.3
   propagate_connected_entities: true  # If true, entities connected with restricted KG elements will also be restricted
   compile_mode: "default"  # Options: "default", "reduce-overhead", "max-autotune"

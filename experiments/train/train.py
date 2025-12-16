@@ -15,7 +15,7 @@ if __name__ == '__main__':
         dataset='autism', # 'autism' 'ml-100k'
         run='train',
         config_file_list=['hopwise.yaml'], # 'hopwise.yaml'
-        saved=False,
+        saved=True,
         checkpoint=None
     )
 

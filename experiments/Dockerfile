@@ -1,5 +1,4 @@
 FROM python:3.10-slim
-RUN echo 'export PS1="autism:\w\$ "' >> /root/.bashrc
 
 # NOTE: remove git installation after hopwise is published to PyPI
 RUN apt-get update && apt-get install -y --no-install-recommends \
