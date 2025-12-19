@@ -48,8 +48,8 @@ services:
       - frontend
 
   web:
-    build: ./Autism_POI_Recommendation_Demo
-    container_name: asd-recsys-app
+    build: ./web
+    container_name: asd-recsys-web
     environment:
       - ENV=production
       - API_URL=http://api:8100
@@ -65,7 +65,7 @@ services:
   # DEVELOPMENT ONLY
   experiments:
     build: ./experiments
-    container_name: asd-recsys-neo4j-experiments
+    container_name: asd-recsys-experiments
     volumes:
       - ./:/app
     working_dir: /app/experiments
