@@ -1,0 +1,146 @@
+[
+  {
+    "name:token_seq": "Mole Antonelliana",
+    "image_url:token_seq": "https://images.unsplash.com/photo-1578072445064-bd0b3f83b847?q=80&w=1000",
+    "description:token_seq": "Un simbolo iconico di Torino, con un museo del cinema e una vista panoramica sulla città.",
+    "address:token_seq": "Via Montebello, 20, Torino",
+    "category:token": "Cultura_e_Musei",
+    "coordinates:float_seq": [
+      45.070,
+      7.686
+    ],
+    "sensory_features:token": {
+      "NOISE": 3,
+      "ODOR": 5,
+      "CROWD": 4,
+      "LIGHT": 4,
+      "SPACE": 5
+    }
+  },
+  {
+    "name:token_seq": "Parco del Valentino",
+    "image_url:token_seq": "https://plus.unsplash.com/premium_photo-1733436277181-a19049e64753?q=80&w=1000",
+    "description:token_seq": "Un grande parco urbano con sentieri lungo il fiume Po e un castello medievale.",
+    "address:token_seq": "Corso Massimo d'Azeglio, Torino",
+    "category:token": "Parchi",
+    "coordinates:float_seq": [
+      45.054,
+      7.694
+    ],
+    "sensory_features:token": {
+      "NOISE": 3,
+      "ODOR": 3,
+      "CROWD": 2,
+      "LIGHT": 4,
+      "SPACE": 3
+    }
+  },
+  {
+    "name:token_seq": "La Teiera Caffè Eccentrico",
+    "image_url:token_seq": "https://images.unsplash.com/photo-1550305080-4e029753abcf?q=80&w=1000",
+    "description:token_seq": "Un accogliente caffè con sale tranquille separate e spazi adatti a persone con sensibilità sensoriali.",
+    "address:token_seq": "Via Bertola, 29, Torino",
+    "category:token": "Bar_e_Pub",
+    "coordinates:float_seq": [
+      45.071,
+      7.675
+    ],
+    "sensory_features:token": {
+      "NOISE": 2,
+      "ODOR": 2,
+      "CROWD": 2,
+      "LIGHT": 2,
+      "SPACE": 4
+    }
+  },
+  {
+    "name:token_seq": "Libreria di Lucia",
+    "image_url:token_seq": "https://images.unsplash.com/photo-1552566626-52f8b828add9?q=80&w=1000",
+    "description:token_seq": "Una libreria indipendente con angoli lettura e orari dedicati alla tranquillità.",
+    "address:token_seq": "Via Po, 18, Torino",
+    "category:token": "Librerie",
+    "coordinates:float_seq": [
+      45.067,
+      7.693
+    ],
+    "sensory_features:token": {
+      "NOISE": 1,
+      "ODOR": 3,
+      "CROWD": 2,
+      "LIGHT": 3,
+      "SPACE": 4
+    }
+  },
+  {
+    "name:token_seq": "Orto Botanico",
+    "image_url:token_seq": "https://www.guidatorino.com/wp-content/uploads/2020/05/orto-botanico-torino-3.jpg",
+    "description:token_seq": "Un giardino tranquillo con percorsi ben segnalati e una sezione di piante sensoriali.",
+    "address:token_seq": "Viale Mattioli, 25, Torino",
+    "category:token": "Parchi",
+    "coordinates:float_seq": [
+      45.063,
+      7.688
+    ],
+    "sensory_features:token": {
+      "NOISE": 1,
+      "ODOR": 4,
+      "CROWD": 1,
+      "LIGHT": 4,
+      "SPACE": 5
+    }
+  },
+  {
+    "name:token_seq": "Orto Botanico 2",
+    "image_url:token_seq": "https://www.guidatorino.com/wp-content/uploads/2020/05/orto-botanico-torino-3.jpg",
+    "description:token_seq": "Un giardino tranquillo con percorsi ben segnalati e una sezione di piante sensoriali.",
+    "address:token_seq": "Viale Mattioli, 25, Torino",
+    "category:token": "Parchi",
+    "coordinates:float_seq": [
+      45.063,
+      7.688
+    ],
+    "sensory_features:token": {
+      "NOISE": 1,
+      "ODOR": 4,
+      "CROWD": 1,
+      "LIGHT": 4,
+      "SPACE": 5
+    }
+  },
+  {
+    "name:token_seq": "Orto Botanico 3",
+    "image_url:token_seq": "https://www.guidatorino.com/wp-content/uploads/2020/05/orto-botanico-torino-3.jpg",
+    "description:token_seq": "Un giardino tranquillo con percorsi ben segnalati e una sezione di piante sensoriali.",
+    "address:token_seq": "Viale Mattioli, 25, Torino",
+    "category:token": "Parchi",
+    "coordinates:float_seq": [
+      45.063,
+      7.688
+    ],
+    "sensory_features:token": {
+      "NOISE": 1,
+      "ODOR": 4,
+      "CROWD": 1,
+      "LIGHT": 4,
+      "SPACE": 5
+    }
+  },
+  {
+    "name:token_seq": "Orto Botanico 4",
+    "image_url:token_seq": "https://www.guidatorino.com/wp-content/uploads/2020/05/orto-botanico-torino-3.jpg",
+    "description:token_seq": "Un giardino tranquillo con percorsi ben segnalati e una sezione di piante sensoriali.",
+    "address:token_seq": "Viale Mattioli, 25, Torino",
+    "category:token": "Parchi",
+    "coordinates:float_seq": [
+      45.063,
+      7.688
+    ],
+    "sensory_features:token": {
+      "NOISE": 1,
+      "ODOR": 4,
+      "CROWD": 1,
+      "LIGHT": 4,
+      "SPACE": 5
+    }
+  }
+]
