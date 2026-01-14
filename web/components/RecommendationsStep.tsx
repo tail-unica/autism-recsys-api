@@ -57,7 +57,10 @@ export function RecommendationsStep({
     }
   };
 
-  const handleFeedbackSubmit = (placeId: string, feedback: { rating: number; comment: string }) => {
+  const handleFeedbackSubmit = (
+    placeId: string,
+    feedback: { answers: Record<string, number>; comment: string }
+  ) => {
     // TODO: Save feedback to Supabase
     console.log('Feedback submitted:', { placeId, ...feedback });
 

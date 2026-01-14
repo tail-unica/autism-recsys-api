@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, X, MapPin, Loader2 } from 'lucide-react';
+import { Search, X, Loader2 } from 'lucide-react';
 import { searchPlaces, availableCategories } from '../lib/api';
+import { apiConfig } from '../resources/api_config';
 import { Place } from '../lib/types';
 
 interface FavoritePlacesStepProps {
@@ -51,6 +52,7 @@ export function FavoritePlacesStep({ onComplete }: FavoritePlacesStepProps) {
   };
 
   const handleContinue = () => {
+    if (selectedPlaces.length === 0) return;
     onComplete(selectedPlaces);
   };
 
@@ -113,7 +115,7 @@ export function FavoritePlacesStep({ onComplete }: FavoritePlacesStepProps) {
           )}
 
           {/* Places List */}
-          <div className="space-y-3 mb-8 max-h-96 overflow-y-auto">
+          <div className="space-y-3 mb-8">
             {loading ? (
               <div className="flex items-center justify-center py-8 text-[var(--color-text-secondary)]">
                 <Loader2 className="mr-2 animate-spin" size={18} /> Ricerca dei luoghi...
@@ -123,6 +125,7 @@ export function FavoritePlacesStep({ onComplete }: FavoritePlacesStepProps) {
             ) : (
               places.map((place) => {
                 const isSelected = selectedPlaces.find((p) => p.id === place.id);
+                const imageSrc = place.image || apiConfig.fallback.placeholderImage;
                 return (
                   <button
                     key={place.id}
@@ -133,13 +136,29 @@ export function FavoritePlacesStep({ onComplete }: FavoritePlacesStepProps) {
                         : 'border-[var(--color-border)] bg-white hover:border-[var(--color-primary)]'
                     }`}
                   >
-                    <div className="flex items-start gap-3">
-                      <MapPin className="mt-1 flex-shrink-0 text-[var(--color-primary)]" size={20} />
-                      <div className="flex-1 min-w-0">
-                        <h3 className="mb-1">{place.name}</h3>
-                        <p className="text-sm mb-1">{place.address}</p>
-                        {place.category && (
-                          <span className="inline-block px-3 py-1 bg-white rounded-full text-sm">{place.category}</span>
+                    <div className="flex items-center gap-4">
+                      <div className="w-24 h-24 rounded-xl overflow-hidden flex-shrink-0 bg-[var(--color-bg-accent)]">
+                        <img
+                          src={imageSrc}
+                          alt={place.name}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0 space-y-2">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="min-w-0">
+                            <h3 className="mb-1 truncate">{place.name}</h3>
+                            <p className="text-sm text-[var(--color-text-secondary)] truncate">{place.address}</p>
+                          </div>
+                          {place.category && (
+                            <span className="inline-flex px-3 py-1 bg-white rounded-full text-sm whitespace-nowrap">
+                              {place.category}
+                            </span>
+                          )}
+                        </div>
+                        {place.description && (
+                          <p className="text-sm text-[var(--color-text-secondary)] line-clamp-2">{place.description}</p>
                         )}
                       </div>
                     </div>
@@ -152,10 +171,18 @@ export function FavoritePlacesStep({ onComplete }: FavoritePlacesStepProps) {
           {/* Continue Button */}
           <button
             onClick={handleContinue}
-            className="w-full bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white py-3 px-6 rounded-xl transition-colors"
+            disabled={selectedPlaces.length === 0}
+            className={`w-full py-3 px-6 rounded-xl transition-colors text-white ${
+              selectedPlaces.length === 0
+                ? 'bg-[var(--color-border)] cursor-not-allowed'
+                : 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]'
+            }`}
           >
             Continua
           </button>
+          {selectedPlaces.length === 0 && (
+            <p className="mt-2 text-sm text-[var(--color-error)]">Seleziona almeno un luogo per continuare.</p>
+          )}
         </div>
       </div>
     </div>
