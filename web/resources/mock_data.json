@@ -343,7 +343,7 @@
   },
   {
     "name:token_seq": "giardinetti",
-    "image_url:token_seq": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Small_city_park_generic.jpg/1280px-Small_city_park_generic.jpg",
+    "image_url:token_seq": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Gabinio.Torino-Monumento_Ad_Alessandro_Lamarmora%2C_Giardini_Lamarmora%2C_Via_Cernaia_35P22.jpg/640px-Gabinio.Torino-Monumento_Ad_Alessandro_Lamarmora%2C_Giardini_Lamarmora%2C_Via_Cernaia_35P22.jpg",
     "description:token_seq": "Piccoli giardini in centro, utili per una pausa veloce. Spazio limitato ma con panchine; rumore moderato per la vicinanza alle strade.",
     "address:token_seq": "Giardini La Marmora, Via Bertola, Torino, TO, Piemonte, 10122, Italia",
     "category:token": "Parchi",
@@ -361,7 +361,7 @@
   },
   {
     "name:token_seq": "Convitto Umberto I",
-    "image_url:token_seq": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Historic_school_building_generic.jpg/1280px-Historic_school_building_generic.jpg",
+    "image_url:token_seq": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/C_N_Umberto_I.jpg/640px-C_N_Umberto_I.jpg",
     "description:token_seq": "Istituto storico nel centro città. L’area circostante è abbastanza trafficata; all’esterno lo spazio è limitato, ma i percorsi sono semplici e riconoscibili.",
     "address:token_seq": "Convitto Nazionale Umberto I, Via Piave, Torino, TO, Piemonte, 10122, Italia",
     "category:token": "Cultura_e_Musei",
@@ -378,26 +378,8 @@
     }
   },
   {
-    "name:token_seq": "IKEA Torino-Collegno",
-    "image_url:token_seq": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/IKEA_store_front.jpg/1280px-IKEA_store_front.jpg",
-    "description:token_seq": "Grande negozio di arredamento con percorsi interni lunghi e stimoli visivi intensi. Spesso affollato nei weekend; meglio pianificare pause e orari meno frequentati.",
-    "address:token_seq": "IKEA, Viale Svezia, Leumann, Collegno, TO, Piemonte, 10093, Italia",
-    "category:token": "Centri_Commerciali_e_Supermercati",
-    "coordinates:float_seq": [
-      45.097862,
-      7.581473
-    ],
-    "sensory_features:token": {
-      "NOISE": 4,
-      "ODOR": 2,
-      "CROWD": 4,
-      "LIGHT": 5,
-      "SPACE": 5
-    }
-  },
-  {
     "name:token_seq": "Lego Store - Via Roma",
-    "image_url:token_seq": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Toy_store_interior_generic.jpg/1280px-Toy_store_interior_generic.jpg",
+    "image_url:token_seq": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/03/14-05-28-LEGO-by-RalfR-061.jpg/640px-14-05-28-LEGO-by-RalfR-061.jpg",
     "description:token_seq": "Negozio di giochi e costruzioni in una zona molto centrale. Ambiente colorato e con stimoli visivi; in certi orari può diventare affollato, ma la visita è generalmente breve.",
     "address:token_seq": "Via Roma, 367, Torino, TO, Piemonte, 10123, Italia",
     "category:token": "Centri_Commerciali_e_Supermercati",
@@ -415,7 +397,7 @@
   },
   {
     "name:token_seq": "Balon e Gan Balon",
-    "image_url:token_seq": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Flea_market_stalls_generic.jpg/1280px-Flea_market_stalls_generic.jpg",
+    "image_url:token_seq": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Clothing_racks_in_second_hand_shop%2C_Prague.jpg/640px-Clothing_racks_in_second_hand_shop%2C_Prague.jpg",
     "description:token_seq": "Mercatino dell’usato e dell’antiquariato con molte bancarelle. Esperienza ricca di stimoli: folla, suoni e odori variabili; consigliabile andarci in fasce orarie meno piene.",
     "address:token_seq": "Via Lanino, 4/G, Torino, TO, Piemonte, 10152, Italia",
     "category:token": "Relax_e_Svago",
