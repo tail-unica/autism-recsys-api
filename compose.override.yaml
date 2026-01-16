@@ -21,3 +21,10 @@ services:
               capabilities: [gpu]
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
+
+  web:
+    depends_on: #NOTE: test_react_frontend
+      api:
+        condition: service_healthy
+    networks:
+      - frontend

@@ -38,11 +38,11 @@ services:
       neo4j:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8100/health"]
+      test: ["CMD", "curl", "-f", "http://api:8100/health"]
       interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 30s
+      start_period: 20s
     networks:
       - backend
       - frontend
@@ -52,15 +52,11 @@ services:
     container_name: asd-recsys-web
     environment:
       - ENV=production
-      - API_URL=http://api:8100
     ports:
-      - "7860:7860"
+      - "7860:80"
       - "80:80"
-    #depends_on: #NOTE: test_react_frontend
-    #  api:
-    #    condition: service_healthy
-    #networks:
-    #  - frontend
+    networks:
+      - frontend
 
   # DEVELOPMENT ONLY
   experiments:
