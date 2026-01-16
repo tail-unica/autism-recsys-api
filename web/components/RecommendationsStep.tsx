@@ -1,18 +1,20 @@
 import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
-import { PlaceCard } from './PlaceCard';
 import { FeedbackModal } from './FeedbackModal';
 import { getRecommendations } from '../lib/api';
 import { Place, Recommendation } from '../lib/types';
+import { apiConfig } from '../resources/api_config';
 
 interface RecommendationsStepProps {
-  nickname: string;
+  userId: string;
+  nickname?: string;
   profileAnswers: Record<string, number>;
   favoritePlaces: Place[];
   onEndSession: () => void;
 }
 
 export function RecommendationsStep({
+  userId,
   nickname,
   profileAnswers,
   favoritePlaces,
@@ -20,12 +22,7 @@ export function RecommendationsStep({
 }: RecommendationsStepProps) {
   const [loading, setLoading] = useState(true);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
-  const [feedbacks, setFeedbacks] = useState<Record<string, { liked: boolean }>>({});
-  const [activeFeedbackModal, setActiveFeedbackModal] = useState<{
-    placeId: string;
-    placeName: string;
-    liked: boolean;
-  } | null>(null);
+  const [activeFeedbackIndex, setActiveFeedbackIndex] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -33,7 +30,7 @@ export function RecommendationsStep({
       setLoading(true);
       try {
         const { items } = await getRecommendations({
-          userId: nickname || 'guest',
+          userId: userId || 'guest',
           profileAnswers,
           favoritePlaces,
         });
@@ -47,19 +44,11 @@ export function RecommendationsStep({
     return () => {
       cancelled = true;
     };
-  }, [nickname, profileAnswers, favoritePlaces]);
-
-  const handleFeedback = (placeId: string, liked: boolean) => {
-    setFeedbacks((prev) => ({ ...prev, [placeId]: { liked } }));
-    const place = recommendations.find((r) => r.id === placeId);
-    if (place) {
-      setActiveFeedbackModal({ placeId, placeName: place.name, liked });
-    }
-  };
+  }, [userId, profileAnswers, favoritePlaces]);
 
   const handleFeedbackSubmit = (
     placeId: string,
-    feedback: { answers: Record<string, number>; comment: string }
+    feedback: { liked: boolean; answers: Record<string, number>; comment: string }
   ) => {
     // TODO: Save feedback to Supabase
     console.log('Feedback submitted:', { placeId, ...feedback });
@@ -67,13 +56,16 @@ export function RecommendationsStep({
     // Save to localStorage for now
     const allFeedbacks = JSON.parse(localStorage.getItem('feedbacks') || '[]');
     allFeedbacks.push({
-      nickname,
+      userId,
       placeId,
       ...feedback,
       timestamp: new Date().toISOString(),
     });
     localStorage.setItem('feedbacks', JSON.stringify(allFeedbacks));
   };
+
+  const activeRecommendation =
+    activeFeedbackIndex !== null ? recommendations[activeFeedbackIndex] : null;
 
   if (loading) {
     return (
@@ -91,7 +83,7 @@ export function RecommendationsStep({
     <div className="min-h-screen p-6 py-12">
       <div className="max-w-6xl mx-auto">
         <div className="mb-8">
-          <h1 className="mb-2">Raccomandazioni per {nickname}</h1>
+          <h1 className="mb-2">Raccomandazioni{nickname ? ` per ${nickname}` : ''}</h1>
           <p>Abbiamo selezionato questi posti in base alle tue preferenze</p>
         </div>
 
@@ -100,10 +92,49 @@ export function RecommendationsStep({
             Nessuna raccomandazione disponibile al momento.
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            {recommendations.map((recommendation) => (
-              <PlaceCard key={recommendation.id} recommendation={recommendation} onFeedback={handleFeedback} />
-            ))}
+          <div className="space-y-4 mb-8">
+            {recommendations.map((recommendation, index) => {
+              const imageSrc = recommendation.image || apiConfig.fallback.placeholderImage;
+              return (
+                <button
+                  key={recommendation.id}
+                  type="button"
+                  onClick={() => setActiveFeedbackIndex(index)}
+                  className="w-full text-left bg-[var(--color-bg-secondary)] hover:bg-[var(--color-bg-accent)] transition-colors rounded-2xl p-4 md:p-5 shadow-sm"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-[var(--color-bg-accent)]">
+                      <img
+                        src={imageSrc}
+                        alt={recommendation.name}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                          <h3 className="mb-1 truncate">{recommendation.name}</h3>
+                          {recommendation.address && (
+                            <p className="text-sm text-[var(--color-text-secondary)] truncate">
+                              {recommendation.address}
+                            </p>
+                          )}
+                        </div>
+                        {recommendation.category && (
+                          <span className="inline-flex px-3 py-1 bg-white rounded-full text-sm whitespace-nowrap">
+                            {recommendation.category}
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-2 text-sm text-[var(--color-text-secondary)] line-clamp-2">
+                        ✨ {recommendation.explanation}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         )}
 
@@ -117,12 +148,19 @@ export function RecommendationsStep({
         </div>
       </div>
 
-      {activeFeedbackModal && (
+      {activeRecommendation && activeFeedbackIndex !== null && (
         <FeedbackModal
-          placeName={activeFeedbackModal.placeName}
-          liked={activeFeedbackModal.liked}
-          onClose={() => setActiveFeedbackModal(null)}
-          onSubmit={(feedback) => handleFeedbackSubmit(activeFeedbackModal.placeId, feedback)}
+          recommendation={activeRecommendation}
+          hasNext={activeFeedbackIndex < recommendations.length - 1}
+          onNext={() => {
+            setActiveFeedbackIndex((prev) => {
+              if (prev === null) return prev;
+              const next = prev + 1;
+              return next < recommendations.length ? next : null;
+            });
+          }}
+          onClose={() => setActiveFeedbackIndex(null)}
+          onSubmit={(feedback) => handleFeedbackSubmit(activeRecommendation.id, feedback)}
         />
       )}
     </div>

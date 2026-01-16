@@ -1,5 +1,5 @@
 export const apiConfig = {
-  baseUrl: (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_BASE_URL) || 'http://localhost:8000',
+  baseUrl: '/api',
   endpoints: {
     health: '/health',
     search: '/search',
@@ -10,7 +10,7 @@ export const apiConfig = {
     distance: 1500,
   },
   recommendations: {
-    count: 6,
+    count: 4,
     diversityFactor: 0.5,
     restrictPreferences: false,
   },
@@ -30,6 +30,6 @@ export const apiConfig = {
   },
   fallback: {
     placeholderImage:
-      'https://images.unsplash.com/photo-1505764706515-aa95265c5abc?auto=format&fit=crop&w=1200&q=80',
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/d/db/20200325_Bellis_perennis_02.jpg/640px-20200325_Bellis_perennis_02.jpg',
   },
 };

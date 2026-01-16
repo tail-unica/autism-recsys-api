@@ -20,6 +20,9 @@ RUN rm -rf ./*
 
 COPY --from=build /app/dist .
 
+# Custom nginx config (SPA fallback + /api reverse-proxy)
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
 EXPOSE 80
 
 CMD ["nginx", "-g", "daemon off;"]

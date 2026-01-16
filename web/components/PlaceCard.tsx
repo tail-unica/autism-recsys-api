@@ -79,7 +79,7 @@ export function PlaceCard({ recommendation, onFeedback }: PlaceCardProps) {
         <div className="mb-6 p-4 bg-[var(--color-bg-primary)] rounded-xl">
           <div className="flex items-start gap-2">
             <MessageSquare size={16} className="mt-1 flex-shrink-0 text-[var(--color-primary)]" />
-            <p className="text-sm">{recommendation.explanation}</p>
+            <p className="text-base leading-relaxed">{recommendation.explanation}</p>
           </div>
         </div>
 

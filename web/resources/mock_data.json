@@ -1,13 +1,13 @@
 [
   {
     "name:token_seq": "Mole Antonelliana",
-    "image_url:token_seq": "https://images.unsplash.com/photo-1578072445064-bd0b3f83b847?q=80&w=1000",
+    "image_url:token_seq": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/Mole_Antonelliana_in_Turin.jpg/2560px-Mole_Antonelliana_in_Turin.jpg",
     "description:token_seq": "Un simbolo iconico di Torino, con un museo del cinema e una vista panoramica sulla città.",
     "address:token_seq": "Via Montebello, 20, Torino",
     "category:token": "Cultura_e_Musei",
     "coordinates:float_seq": [
-      45.070,
-      7.686
+      45.068718,
+      7.6928973
     ],
     "sensory_features:token": {
       "NOISE": 3,
@@ -19,7 +19,7 @@
   },
   {
     "name:token_seq": "Parco del Valentino",
-    "image_url:token_seq": "https://plus.unsplash.com/premium_photo-1733436277181-a19049e64753?q=80&w=1000",
+    "image_url:token_seq": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Autumn_colors_%284099639400%29.jpg/2560px-Autumn_colors_%284099639400%29.jpg",
     "description:token_seq": "Un grande parco urbano con sentieri lungo il fiume Po e un castello medievale.",
     "address:token_seq": "Corso Massimo d'Azeglio, Torino",
     "category:token": "Parchi",
@@ -37,7 +37,7 @@
   },
   {
     "name:token_seq": "La Teiera Caffè Eccentrico",
-    "image_url:token_seq": "https://images.unsplash.com/photo-1550305080-4e029753abcf?q=80&w=1000",
+    "image_url:token_seq": "https://upload.wikimedia.org/wikipedia/commons/4/43/Bar-P1030319.jpg",
     "description:token_seq": "Un accogliente caffè con sale tranquille separate e spazi adatti a persone con sensibilità sensoriali.",
     "address:token_seq": "Via Bertola, 29, Torino",
     "category:token": "Bar_e_Pub",
@@ -55,7 +55,7 @@
   },
   {
     "name:token_seq": "Libreria di Lucia",
-    "image_url:token_seq": "https://images.unsplash.com/photo-1552566626-52f8b828add9?q=80&w=1000",
+    "image_url:token_seq": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Interior_of_Books%2C_Maxted_Road.jpg/640px-Interior_of_Books%2C_Maxted_Road.jpg",
     "description:token_seq": "Una libreria indipendente con angoli lettura e orari dedicati alla tranquillità.",
     "address:token_seq": "Via Po, 18, Torino",
     "category:token": "Librerie",
@@ -90,57 +90,345 @@
     }
   },
   {
-    "name:token_seq": "Orto Botanico 2",
-    "image_url:token_seq": "https://www.guidatorino.com/wp-content/uploads/2020/05/orto-botanico-torino-3.jpg",
-    "description:token_seq": "Un giardino tranquillo con percorsi ben segnalati e una sezione di piante sensoriali.",
-    "address:token_seq": "Viale Mattioli, 25, Torino",
-    "category:token": "Parchi",
+    "name:token_seq": "percorso",
+    "image_url:token_seq": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Torino_-_Porta_Palatina.jpg/960px-Torino_-_Porta_Palatina.jpg",
+    "description:token_seq": "Un breve percorso a piedi nel Quadrilatero Romano, con strade acciottolate e molte possibilità di fermarsi in punti tranquilli. Ideale se si vuole fare una passeggiata guidata con tempi flessibili.",
+    "address:token_seq": "Via Giovanni Botero, Quadrilatero Romano, Torino, TO, Piemonte, 10144, Italia",
+    "category:token": "Piazze",
     "coordinates:float_seq": [
-      45.063,
-      7.688
+      45.070385,
+      7.67818
+    ],
+    "sensory_features:token": {
+      "NOISE": 3,
+      "ODOR": 3,
+      "CROWD": 3,
+      "LIGHT": 3,
+      "SPACE": 3
+    }
+  },
+  {
+    "name:token_seq": "Aeroporto di Torino",
+    "image_url:token_seq": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Aeroporto_di_Torino_Caselle.jpeg/960px-Aeroporto_di_Torino_Caselle.jpeg",
+    "description:token_seq": "Aeroporto di Torino-Caselle, con aree d’attesa ampie e servizi essenziali. In alcuni orari può essere molto affollato e rumoroso, ma ci sono zone più tranquille lontano dai gate principali.",
+    "address:token_seq": "Strada Aeroporto, 12, 10072 Caselle Torinese (TO)",
+    "category:token": "Stazioni",
+    "coordinates:float_seq": [
+      45.18961,
+      7.6448617
+    ],
+    "sensory_features:token": {
+      "NOISE": 5,
+      "ODOR": 2,
+      "CROWD": 4,
+      "LIGHT": 5,
+      "SPACE": 4
+    }
+  },
+  {
+    "name:token_seq": "Macgillycuddy's PUB",
+    "image_url:token_seq": "https://upload.wikimedia.org/wikipedia/commons/4/43/Bar-P1030319.jpg",
+    "description:token_seq": "Pub informale con atmosfera vivace. Nei giorni di partita l’ambiente può diventare rumoroso e affollato; in orari più tranquilli è più gestibile e con spazi per sedersi lontano dalla musica.",
+    "address:token_seq": "via Bligny 0, 10122, Torino TO",
+    "category:token": "Bar_e_Pub",
+    "coordinates:float_seq": [
+      45.07413,
+      7.6758924
+    ],
+    "sensory_features:token": {
+      "NOISE": 4,
+      "ODOR": 3,
+      "CROWD": 4,
+      "LIGHT": 3,
+      "SPACE": 2
+    }
+  },
+  {
+    "name:token_seq": "Biblioteca Civica Centrale",
+    "image_url:token_seq": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/Centrale_facciata_2.jpg/960px-Centrale_facciata_2.jpg",
+    "description:token_seq": "Biblioteca con sale studio e spazi di consultazione. In genere è silenziosa, con luci stabili e regole chiare; può risultare più affollata in periodo di esami.",
+    "address:token_seq": "Biblioteca civica centrale, Via Giovanni Bertrandi, Quadrilatero Romano, Torino, TO, Piemonte, 10144, Italia",
+    "category:token": "Biblioteche",
+    "coordinates:float_seq": [
+      45.074753,
+      7.6736016
     ],
     "sensory_features:token": {
       "NOISE": 1,
+      "ODOR": 2,
+      "CROWD": 3,
+      "LIGHT": 3,
+      "SPACE": 4
+    }
+  },
+  {
+    "name:token_seq": "Dipartimento di informatica",
+    "image_url:token_seq": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d8/Amiga_A1000_IMG_4275.jpg/2560px-Amiga_A1000_IMG_4275.jpg",
+    "description:token_seq": "Sede universitaria con aule, uffici e corridoi. Può essere impegnativa nelle ore di cambio lezione (rumore e passaggi frequenti), ma ci sono zone più tranquille e prevedibili.",
+    "address:token_seq": "Dipartimento di informatica, Via Pessinetto, San Donato, Torino, TO, Piemonte, 10144, Italia",
+    "category:token": "Cultura_e_Musei",
+    "coordinates:float_seq": [
+      45.09005,
+      7.659174
+    ],
+    "sensory_features:token": {
+      "NOISE": 3,
+      "ODOR": 2,
+      "CROWD": 4,
+      "LIGHT": 4,
+      "SPACE": 3
+    }
+  },
+  {
+    "name:token_seq": "Birghiotto",
+    "image_url:token_seq": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Restaurant_room_of_Amantaka_luxury_Resort_%26_Hotel_in_Luang_Prabang_Laos.jpg/640px-Restaurant_room_of_Amantaka_luxury_Resort_%26_Hotel_in_Luang_Prabang_Laos.jpg",
+    "description:token_seq": "Ristorante/self-service con servizio rapido. A pranzo può essere rumoroso e affollato; scegliendo orari leggermente decentrati l’esperienza è più tranquilla.",
+    "address:token_seq": "Ristorante Birghiotto, 185, Corso Svizzera, Torino, TO, Piemonte, 10144, Italia",
+    "category:token": "Ristoranti",
+    "coordinates:float_seq": [
+      45.090435,
+      7.659851
+    ],
+    "sensory_features:token": {
+      "NOISE": 4,
       "ODOR": 4,
-      "CROWD": 1,
+      "CROWD": 4,
+      "LIGHT": 3,
+      "SPACE": 3
+    }
+  },
+  {
+    "name:token_seq": "Pippo2",
+    "image_url:token_seq": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/45/A_small_cup_of_coffee.JPG/640px-A_small_cup_of_coffee.JPG",
+    "description:token_seq": "Punto di riferimento informale nei dintorni dell’area universitaria, utile come tappa breve. L’ambiente esterno è abbastanza prevedibile, con flussi variabili nelle ore di punta.",
+    "address:token_seq": "Dipartimento di informatica, Via Pessinetto, San Donato, Torino, Piemonte, 10144, Italia",
+    "category:token": "Cultura_e_Musei",
+    "coordinates:float_seq": [
+      45.090202,
+      7.65919
+    ],
+    "sensory_features:token": {
+      "NOISE": 2,
+      "ODOR": 2,
+      "CROWD": 3,
+      "LIGHT": 3,
+      "SPACE": 3
+    }
+  },
+  {
+    "name:token_seq": "Piazza Statuto",
+    "image_url:token_seq": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Piazza_Statuto_Torino.jpg/1280px-Piazza_Statuto_Torino.jpg",
+    "description:token_seq": "Ampia piazza con spazi aperti e panchine. Il traffico circostante può aumentare rumore e stimoli, ma lo spazio permette di scegliere zone più distanti e meno affollate.",
+    "address:token_seq": "Piazza Statuto, Torino, TO, Piemonte, 10144, Italia",
+    "category:token": "Piazze",
+    "coordinates:float_seq": [
+      45.076233,
+      7.670721
+    ],
+    "sensory_features:token": {
+      "NOISE": 3,
+      "ODOR": 2,
+      "CROWD": 3,
       "LIGHT": 4,
       "SPACE": 5
     }
   },
   {
-    "name:token_seq": "Orto Botanico 3",
-    "image_url:token_seq": "https://www.guidatorino.com/wp-content/uploads/2020/05/orto-botanico-torino-3.jpg",
-    "description:token_seq": "Un giardino tranquillo con percorsi ben segnalati e una sezione di piante sensoriali.",
-    "address:token_seq": "Viale Mattioli, 25, Torino",
-    "category:token": "Parchi",
+    "name:token_seq": "Galleria Civica d’Arte Moderna e Contemporanea",
+    "image_url:token_seq": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8b/GAM_Torino.jpg/1280px-GAM_Torino.jpg",
+    "description:token_seq": "Museo con sale ampie e percorsi chiari. In genere luci controllate e rumore contenuto; alcune mostre temporanee possono aumentare affluenza e stimoli visivi.",
+    "address:token_seq": "GAM, Via Magenta, Torino, TO, Piemonte, 10144, Italia",
+    "category:token": "Cultura_e_Musei",
     "coordinates:float_seq": [
-      45.063,
-      7.688
+      45.064857,
+      7.669771
     ],
     "sensory_features:token": {
-      "NOISE": 1,
+      "NOISE": 2,
+      "ODOR": 2,
+      "CROWD": 3,
+      "LIGHT": 3,
+      "SPACE": 4
+    }
+  },
+  {
+    "name:token_seq": "QC Terme Torino",
+    "image_url:token_seq": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2d/Spa_pool_generic.jpg/1280px-Spa_pool_generic.jpg",
+    "description:token_seq": "Centro benessere con percorsi relax, saune e aree silenziose. Può avere profumi intensi (oli/essenze) e luci soffuse; in alcuni orari l’affluenza cresce.",
+    "address:token_seq": "Corso Vittorio Emanuele II, 77/A, Torino, TO, Piemonte, 10128, Italia",
+    "category:token": "Relax_e_Svago",
+    "coordinates:float_seq": [
+      45.064568,
+      7.672861
+    ],
+    "sensory_features:token": {
+      "NOISE": 2,
       "ODOR": 4,
-      "CROWD": 1,
+      "CROWD": 3,
+      "LIGHT": 2,
+      "SPACE": 4
+    }
+  },
+  {
+    "name:token_seq": "Unito Cle",
+    "image_url:token_seq": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/University_building_generic.jpg/1280px-University_building_generic.jpg",
+    "description:token_seq": "Area universitaria lungo Dora Siena, con ingressi e percorsi interni abbastanza regolari. Nelle ore di punta può risultare affollata; fuori orario è più silenziosa.",
+    "address:token_seq": "Università degli Studi di Torino, Lungo Dora Siena, Vanchiglia, Torino, TO, Piemonte, 10144, Italia",
+    "category:token": "Cultura_e_Musei",
+    "coordinates:float_seq": [
+      45.073246,
+      7.69894
+    ],
+    "sensory_features:token": {
+      "NOISE": 3,
+      "ODOR": 2,
+      "CROWD": 4,
+      "LIGHT": 4,
+      "SPACE": 3
+    }
+  },
+  {
+    "name:token_seq": "Parco Michelotti",
+    "image_url:token_seq": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Autumn_colors_%284099639400%29.jpg/2560px-Autumn_colors_%284099639400%29.jpg",
+    "description:token_seq": "Parco lungo il Po con tratti ombreggiati e aree più aperte. In genere è un posto buono per una pausa sensoriale, con possibilità di scegliere percorsi meno frequentati.",
+    "address:token_seq": "Parco Ignazio Michelotti, Borgo Po, Torino, TO, Piemonte, 10131, Italia",
+    "category:token": "Parchi",
+    "coordinates:float_seq": [
+      45.06606,
+      7.7035236
+    ],
+    "sensory_features:token": {
+      "NOISE": 2,
+      "ODOR": 2,
+      "CROWD": 2,
       "LIGHT": 4,
       "SPACE": 5
     }
   },
   {
-    "name:token_seq": "Orto Botanico 4",
-    "image_url:token_seq": "https://www.guidatorino.com/wp-content/uploads/2020/05/orto-botanico-torino-3.jpg",
-    "description:token_seq": "Un giardino tranquillo con percorsi ben segnalati e una sezione di piante sensoriali.",
-    "address:token_seq": "Viale Mattioli, 25, Torino",
-    "category:token": "Parchi",
+    "name:token_seq": "Evento",
+    "image_url:token_seq": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Porta_Nuova_Station_Turin.jpg/1280px-Porta_Nuova_Station_Turin.jpg",
+    "description:token_seq": "Punto in zona Porta Nuova spesso usato come riferimento per eventi o incontri. Stimoli variabili: traffico, persone e annunci possono aumentare il rumore.",
+    "address:token_seq": "Unieuro Porta Nuova, Corso Vittorio Emanuele II, Torino, TO, Piemonte, 10144, Italia",
+    "category:token": "Stazioni",
     "coordinates:float_seq": [
-      45.063,
-      7.688
+      45.062347,
+      7.6779814
     ],
     "sensory_features:token": {
-      "NOISE": 1,
-      "ODOR": 4,
-      "CROWD": 1,
+      "NOISE": 4,
+      "ODOR": 2,
+      "CROWD": 4,
       "LIGHT": 4,
+      "SPACE": 3
+    }
+  },
+  {
+    "name:token_seq": "Moba Café",
+    "image_url:token_seq": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/Coffee_shop_interior_generic.jpg/1280px-Coffee_shop_interior_generic.jpg",
+    "description:token_seq": "Caffè in centro con posti a sedere e un’atmosfera dinamica. Buono per una pausa breve; nelle ore serali può diventare più affollato e rumoroso.",
+    "address:token_seq": "Via Cibrario, 2, Torino, TO, Piemonte, Italia",
+    "category:token": "Bar_e_Pub",
+    "coordinates:float_seq": [
+      45.077694,
+      7.6668425
+    ],
+    "sensory_features:token": {
+      "NOISE": 3,
+      "ODOR": 3,
+      "CROWD": 3,
+      "LIGHT": 3,
+      "SPACE": 3
+    }
+  },
+  {
+    "name:token_seq": "giardinetti",
+    "image_url:token_seq": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Small_city_park_generic.jpg/1280px-Small_city_park_generic.jpg",
+    "description:token_seq": "Piccoli giardini in centro, utili per una pausa veloce. Spazio limitato ma con panchine; rumore moderato per la vicinanza alle strade.",
+    "address:token_seq": "Giardini La Marmora, Via Bertola, Torino, TO, Piemonte, 10122, Italia",
+    "category:token": "Parchi",
+    "coordinates:float_seq": [
+      45.07099,
+      7.676944
+    ],
+    "sensory_features:token": {
+      "NOISE": 3,
+      "ODOR": 2,
+      "CROWD": 3,
+      "LIGHT": 4,
+      "SPACE": 2
+    }
+  },
+  {
+    "name:token_seq": "Convitto Umberto I",
+    "image_url:token_seq": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Historic_school_building_generic.jpg/1280px-Historic_school_building_generic.jpg",
+    "description:token_seq": "Istituto storico nel centro città. L’area circostante è abbastanza trafficata; all’esterno lo spazio è limitato, ma i percorsi sono semplici e riconoscibili.",
+    "address:token_seq": "Convitto Nazionale Umberto I, Via Piave, Torino, TO, Piemonte, 10122, Italia",
+    "category:token": "Cultura_e_Musei",
+    "coordinates:float_seq": [
+      45.07527,
+      7.6755595
+    ],
+    "sensory_features:token": {
+      "NOISE": 3,
+      "ODOR": 2,
+      "CROWD": 2,
+      "LIGHT": 4,
+      "SPACE": 2
+    }
+  },
+  {
+    "name:token_seq": "IKEA Torino-Collegno",
+    "image_url:token_seq": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/IKEA_store_front.jpg/1280px-IKEA_store_front.jpg",
+    "description:token_seq": "Grande negozio di arredamento con percorsi interni lunghi e stimoli visivi intensi. Spesso affollato nei weekend; meglio pianificare pause e orari meno frequentati.",
+    "address:token_seq": "IKEA, Viale Svezia, Leumann, Collegno, TO, Piemonte, 10093, Italia",
+    "category:token": "Centri_Commerciali_e_Supermercati",
+    "coordinates:float_seq": [
+      45.097862,
+      7.581473
+    ],
+    "sensory_features:token": {
+      "NOISE": 4,
+      "ODOR": 2,
+      "CROWD": 4,
+      "LIGHT": 5,
       "SPACE": 5
+    }
+  },
+  {
+    "name:token_seq": "Lego Store - Via Roma",
+    "image_url:token_seq": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Toy_store_interior_generic.jpg/1280px-Toy_store_interior_generic.jpg",
+    "description:token_seq": "Negozio di giochi e costruzioni in una zona molto centrale. Ambiente colorato e con stimoli visivi; in certi orari può diventare affollato, ma la visita è generalmente breve.",
+    "address:token_seq": "Via Roma, 367, Torino, TO, Piemonte, 10123, Italia",
+    "category:token": "Centri_Commerciali_e_Supermercati",
+    "coordinates:float_seq": [
+      45.064285,
+      7.6804028
+    ],
+    "sensory_features:token": {
+      "NOISE": 3,
+      "ODOR": 1,
+      "CROWD": 4,
+      "LIGHT": 5,
+      "SPACE": 2
+    }
+  },
+  {
+    "name:token_seq": "Balon e Gan Balon",
+    "image_url:token_seq": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Flea_market_stalls_generic.jpg/1280px-Flea_market_stalls_generic.jpg",
+    "description:token_seq": "Mercatino dell’usato e dell’antiquariato con molte bancarelle. Esperienza ricca di stimoli: folla, suoni e odori variabili; consigliabile andarci in fasce orarie meno piene.",
+    "address:token_seq": "Via Lanino, 4/G, Torino, TO, Piemonte, 10152, Italia",
+    "category:token": "Relax_e_Svago",
+    "coordinates:float_seq": [
+      45.07864,
+      7.682678
+    ],
+    "sensory_features:token": {
+      "NOISE": 4,
+      "ODOR": 3,
+      "CROWD": 5,
+      "LIGHT": 4,
+      "SPACE": 2
     }
   }
 ]

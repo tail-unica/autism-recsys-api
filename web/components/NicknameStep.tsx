@@ -1,37 +1,61 @@
 import { useState } from 'react';
+import { sha256Hex } from '../lib/hash';
 
 interface NicknameStepProps {
-  onComplete: (nickname: string, isNewUser: boolean) => void;
+  initialNickname?: string;
+  onComplete: (nickname: string, nicknameHash: string, isNewUser: boolean) => void;
 }
 
-export function NicknameStep({ onComplete }: NicknameStepProps) {
-  const [nickname, setNickname] = useState('');
+export function NicknameStep({ initialNickname = '', onComplete }: NicknameStepProps) {
+  const [nickname, setNickname] = useState(initialNickname);
   const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    if (!nickname.trim()) {
+    const normalizedNickname = nickname.trim();
+    if (!normalizedNickname) {
       setError('Inserisci un nickname');
+      return;
+    }
+
+    let nicknameHash: string;
+    try {
+      nicknameHash = await sha256Hex(normalizedNickname);
+    } catch {
+      setError('Impossibile calcolare l\'hash del nickname su questo browser');
       return;
     }
 
     // TODO: Check if user exists in Supabase
     // For now, simulate with localStorage
     const existingUsers = JSON.parse(localStorage.getItem('users') || '{}');
-    const isNewUser = !existingUsers[nickname];
+
+    // Backward-compat: migrate legacy storage keyed by plain nickname.
+    if (existingUsers[normalizedNickname] && !existingUsers[nicknameHash]) {
+      const legacy = { ...existingUsers[normalizedNickname] };
+      delete legacy.nickname;
+      existingUsers[nicknameHash] = {
+        ...legacy,
+        nicknameHash,
+      };
+      delete existingUsers[normalizedNickname];
+      localStorage.setItem('users', JSON.stringify(existingUsers));
+    }
+
+    const isNewUser = !existingUsers[nicknameHash];
 
     if (isNewUser) {
-      existingUsers[nickname] = {
-        nickname,
+      existingUsers[nicknameHash] = {
+        nicknameHash,
         profile: null,
         createdAt: new Date().toISOString(),
       };
       localStorage.setItem('users', JSON.stringify(existingUsers));
     }
 
-    onComplete(nickname, isNewUser);
+    onComplete(normalizedNickname, nicknameHash, isNewUser);
   };
 
   return (

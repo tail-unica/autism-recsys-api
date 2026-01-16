@@ -5,17 +5,18 @@ import { apiConfig } from '../resources/api_config';
 import { Place } from '../lib/types';
 
 interface FavoritePlacesStepProps {
+  initialPlaces?: Place[];
   onComplete: (favoritePlaces: Place[]) => void;
 }
 
 const ALL_CATEGORY = 'Tutti';
 
-export function FavoritePlacesStep({ onComplete }: FavoritePlacesStepProps) {
+export function FavoritePlacesStep({ initialPlaces = [], onComplete }: FavoritePlacesStepProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(ALL_CATEGORY);
   const [loading, setLoading] = useState(true);
   const [places, setPlaces] = useState<Place[]>([]);
-  const [selectedPlaces, setSelectedPlaces] = useState<Place[]>([]);
+  const [selectedPlaces, setSelectedPlaces] = useState<Place[]>(initialPlaces);
 
   const categoryOptions = useMemo(
     () => [{ id: ALL_CATEGORY, name: ALL_CATEGORY }, ...availableCategories()],

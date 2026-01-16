@@ -3,7 +3,9 @@ import { questions as aversionQuestions } from '../resources/aversions_questions
 import { questions as profileQuestions } from '../resources/profile_questions';
 
 interface ProfileConfigStepProps {
-  nickname: string;
+  userId: string;
+  nickname?: string;
+  initialAnswers?: Record<string, number>;
   onComplete: (answers: Record<string, number>) => void;
 }
 
@@ -12,8 +14,8 @@ type AversionQuestion = (typeof aversionQuestions)[number];
 
 const totalQuestions = profileQuestions.length + aversionQuestions.length;
 
-export function ProfileConfigStep({ nickname, onComplete }: ProfileConfigStepProps) {
-  const [answers, setAnswers] = useState<Record<string, number>>({});
+export function ProfileConfigStep({ userId: _userId, nickname, initialAnswers = {}, onComplete }: ProfileConfigStepProps) {
+  const [answers, setAnswers] = useState<Record<string, number>>(initialAnswers);
 
   const handleAnswerChange = (questionId: string, value: number | null) => {
     setAnswers((prev) => {
@@ -130,7 +132,7 @@ export function ProfileConfigStep({ nickname, onComplete }: ProfileConfigStepPro
     <div className="min-h-screen p-6 py-12">
       <div className="max-w-3xl mx-auto">
         <div className="bg-[var(--color-bg-secondary)] rounded-3xl shadow-sm p-8 md:p-12">
-          <h1 className="mb-2">Ciao, {nickname}!</h1>
+          <h1 className="mb-2">Ciao{nickname ? `, ${nickname}` : ''}!</h1>
           <p className="mb-8">Rispondi a queste domande per aiutarci a conoscere le tue preferenze</p>
 
           <form onSubmit={handleSubmit} className="space-y-12">
