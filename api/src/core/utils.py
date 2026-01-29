@@ -19,9 +19,28 @@ def get_cfg():
         return compose(config_name="default")
 
 class CustomFormatter(logging.Formatter):
+    # Use standard ANSI color codes to ensure terminal support
+    grey = "\x1b[90m"
+    yellow = "\x1b[33m"
+    red = "\x1b[31m"
+    bold_red = "\x1b[31;1m"
+    reset = "\x1b[0m"
+
+    def __init__(self, fmt: str, datefmt: str | None = None):
+        super().__init__(fmt=fmt, datefmt=datefmt)
+        self._level_formats = {
+            logging.DEBUG: f"{self.grey}{fmt}{self.reset}",
+            logging.INFO: fmt,
+            logging.WARNING: f"{self.yellow}{fmt}{self.reset}",
+            logging.ERROR: f"{self.red}{fmt}{self.reset}",
+            logging.CRITICAL: f"{self.bold_red}{fmt}{self.reset}",
+        }
+
     def format(self, record):
         record.levelname_c = f"{record.levelname}:"
-        return super().format(record)
+        log_fmt = self._level_formats.get(record.levelno, self._fmt)
+        formatter = logging.Formatter(log_fmt, self.datefmt)
+        return formatter.format(record)
 
 @lru_cache(maxsize=1)
 def get_logger() -> logging.Logger:

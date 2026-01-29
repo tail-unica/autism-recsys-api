@@ -2,6 +2,7 @@ data:
   dataset: "autism"
   csv_place_data: "autism.item"
   csv_place_col_name: "name:token_seq"
+  csv_place_col_id: "poi_id:token"
   csv_separator: "\t"
 
 # TODO: Update with dynamically based dataset creation (see project milestones)
@@ -9,11 +10,11 @@ data:
 model:
   model_name: "PEARLM"
   device: "cuda" # "cuda" or "cpu"
-  hopwise_checkpoint_file: "checkpoint/hopwise-distilgpt2-PEARLM-Dec-16-2025_10-37-07.pth"
+  hopwise_checkpoint_file: "checkpoint/hopwise-distilgpt2-PEARLM-Jan-28-2026_10-23-18.pth"
   diversity_factor: 0.3
-  propagate_connected_entities: true  # If true, entities connected with restricted KG elements will also be restricted
+  propagate_connected_entities: false  # If true, entities connected with restricted KG elements will also be restricted
   compile_mode: "default"  # Options: "default", "reduce-overhead", "max-autotune"
-  remove_user_tokens_from_sequences: true  # If true, user tokens will be removed from sequences in zero-shot recommendation
+  remove_user_tokens_from_sequences: false  # If true, user tokens will be removed from sequences in zero-shot recommendation
   tag_offset: 0.1  # Offset for accepting tag matching vs other matching in zero-shot recommendation
 
 logging:

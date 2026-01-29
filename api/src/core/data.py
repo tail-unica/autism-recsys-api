@@ -252,32 +252,19 @@ def get_item_link(session: neo4j.Session) -> pl.DataFrame:
 
 
 def get_item_ids(
-    session: neo4j.Session,
+    cfg: dict,
     item_name: list[str]
 ) -> list[str]:
-    """
-    Resolve a list of item names to their Place node ids (tokenized elementId).
+    # Get item IDs from item names from atomic CSV file
+    path = os.path.join(os.path.dirname(__file__), "data", cfg.data.dataset, cfg.data.csv_place_data)
+    df = pl.read_csv(path, separator=cfg.data.csv_separator)
+    return list(map(str, df.filter(pl.col(cfg.data.csv_place_col_name).is_in(item_name))[cfg.data.csv_place_col_id].to_list()))
 
-    Args:
-        session: Neo4j session.
-        item_name: List of item names to resolve.
-    Returns:
-        List of tokenized ids corresponding to the input order. Missing names are skipped.
-    """
-    if not item_name:
-        return []
-
-    query = """
-        MATCH (p:Place)
-        WHERE p.name IN $names
-        RETURN p.name AS name, elementId(p) AS node_id
-    """
-    result = session.run(query, names=item_name)
-
-    # Build a name -> tokenized id map
-    name_to_id = {}
-    for record in result:
-        name_to_id[record["name"]] = parse_id(record["node_id"])
-
-    # Preserve input order, skip names not found
-    return [name_to_id[n] for n in item_name if n in name_to_id]
+def get_item_names(
+    cfg: dict,
+    item_ids: list[str]
+) -> list[str]:
+    # Get item names from item IDs from atomic CSV file
+    path = os.path.join(os.path.dirname(__file__), "data", cfg.data.dataset, cfg.data.csv_place_data)
+    df = pl.read_csv(path, separator=cfg.data.csv_separator)
+    return df.filter(pl.col(cfg.data.csv_place_col_id).is_in(list(map(int, item_ids))))[cfg.data.csv_place_col_name].to_list()

@@ -7,6 +7,7 @@ from src.core.recommendation_tools import (
     ZeroShotConstrainedLogitsProcessor,
 )
 from src.core.logger import logger
+from src.core.data import get_item_names
 
 
 def id2tokenizer_token(dataset, _ids):
@@ -31,9 +32,10 @@ def token2real_token(token, dataset):
         token = dataset.field2id_token[dataset.entity_field][int(token[1:])]
     elif token.startswith(PathLanguageModelingTokenType.RELATION.token):
         token = dataset.field2id_token[dataset.relation_field][int(token[1:])]
+    elif token.startswith(PathLanguageModelingTokenType.USER.token):
+        token = "User"
 
     return token
-
 
 def prepare_recommender_and_raw_inputs_existing_user(
     recommender,
@@ -58,7 +60,6 @@ def prepare_recommender_and_raw_inputs_existing_user(
 
     return raw_inputs
 
-
 def prepare_recommender_and_raw_inputs_zero_shot(  # noqa: PLR0913
     recommender,
     dataset,
@@ -75,17 +76,32 @@ def prepare_recommender_and_raw_inputs_zero_shot(  # noqa: PLR0913
         logger.error("No preferences provided for zero-shot recommendation.")
         return None
 
-    entity_mapping = dataset.field2token_id[dataset.iid_field]
-    preferences = [entity_mapping.get(m, m) for m in preferences]
-    
+
+    token_list = dataset.field2id_token[dataset.iid_field]
+    token_to_id = {tok: idx for idx, tok in enumerate(token_list)}
+
+    preference_ids = []
+    for pref in preferences:
+        if isinstance(pref, int):
+            preference_ids.append(pref)
+            continue
+
+        pref_id = token_to_id.get(pref)
+        if pref_id is None:
+            logger.error(
+                f"Value {pref} not found in dataset.field2id_token[{dataset.iid_field}]."
+            )
+            return None
+        preference_ids.append(pref_id)
+
     raw_inputs = [
         dataset.path_token_separator.join(
             [
                 dataset.tokenizer.bos_token,
-                PathLanguageModelingTokenType.ITEM.token + str(pref)
+                PathLanguageModelingTokenType.ITEM.token + str(pref_id)
             ]
         )
-        for pref in preferences
+        for pref_id in preference_ids
     ]
 
     recommender.sequence_postprocessor = zero_shot_sequence_postprocessor
@@ -115,7 +131,7 @@ def prepare_recommender_and_raw_inputs_zero_shot(  # noqa: PLR0913
                         )
                     )"""
 
-    return raw_inputs
+    return raw_inputs # example: I254
 
 
 def reset_logits_processors(logits_processor_list):
@@ -133,13 +149,16 @@ def unpack_recommendation_sequences_tuples(sequences, dataset, user_id):
     recommendation_ids = [seq[1] for seq in sequences]
     scores = [seq[2] for seq in sequences]
     explanations = [seq[3] for seq in sequences]
+    logger.debug(f"{'Unpacked recommendation IDs'.rjust(27)}: {str(recommendation_ids)}") # 
+    logger.debug(f"{'Unpacked scores'.rjust(27)}: {str(scores)}")
+    logger.debug(f"{'Unpacked explanations'.rjust(27)}: {str(explanations)}")
     for idx in range(len(explanations)):
         explanations[idx] = [token2real_token(token, dataset) for token in explanations[idx][1:]]
 
     try:
         if user_id not in dataset.field2id_token[dataset.uid_field]:
             explanations = [
-                f"User {user_id} has_preference " + " ".join(exp).replace(dataset.ui_relation, "interacted_with")
+                f"User {user_id} has_preference " + " ".join(exp) # .replace(dataset.ui_relation, "interacted_with")
                 for exp in explanations
             ]
 

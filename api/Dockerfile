@@ -2,7 +2,7 @@ FROM python:3.10-slim
 
 # Install git and ca-certificates
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends git ca-certificates \
+    && apt-get install -y --no-install-recommends git curl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv from Astral's UV image

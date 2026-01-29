@@ -5,6 +5,8 @@ from hopwise.model.sequence_postprocessor import CumulativeSequenceScorePostProc
 from hopwise.utils import KnowledgeEvaluationType, PathLanguageModelingTokenType
 from transformers import StoppingCriteria
 
+from src.core.logger import logger
+
 
 class RestrictionNotApplicable(RuntimeError):
     """
@@ -102,6 +104,8 @@ class ZeroShotConstrainedLogitsProcessor(ConstrainedLogitsProcessorWordLevel):
         if self.remove_user_tokens_from_sequences:
             # In zero-shot, we do not want explanations based on user IDs, so we remove them
             candidate_tokens = candidate_tokens - self.tokenized_uids - self.tokenized_ui_relation
+        else:
+            pass
 
         return key, list(candidate_tokens)
 
@@ -119,10 +123,10 @@ class ZeroShotConstrainedLogitsProcessor(ConstrainedLogitsProcessorWordLevel):
                 return set(self.tokenized_ckg[key1].keys())
         else:
             # If key1 is not in tokenized_ckg, return all keys as candidates. Bad sequence will be filtered out later.
-            return set(self.tokenized_ckg.keys())
-            # raise ValueError(
-            #     f"Key {key1} ('{self.tokenizer.convert_ids_to_tokens(key1)}') not found in tokenized_ckg"
-            # )
+            # return set(self.tokenized_ckg.keys())
+            raise ValueError(
+                f"Key {key1} ('{self.tokenizer.convert_ids_to_tokens(key1)}') not found in tokenized_ckg"
+            )
 
 
 class RestrictionLogitsProcessorWordLevel(ConstrainedLogitsProcessorWordLevel):

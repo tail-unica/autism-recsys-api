@@ -5,6 +5,7 @@ from pprint import pformat
 from neo4j import GraphDatabase
 import os
 import numpy as np
+import pandas as pd
 
 from src.core.utils import get_cfg
 from src.core.logger import logger
@@ -53,6 +54,17 @@ class RecommenderService:
     @property
     def logger(self):
         return logger
+
+    def debug_init(self):
+        logger.debug("field2token_id['poi_id']:")
+        logger.debug(dict(sorted(self.dataset.field2token_id['poi_id'].items(), key=lambda item: item[1])))
+
+        logger.debug("field2token_id['entity_id']:")
+        logger.debug(dict(sorted(self.dataset.field2token_id['entity_id'].items(), key=lambda item: item[1])))
+
+        logger.debug("field2id_token:")
+        logger.debug(self.dataset.field2id_token)
+
 
     async def initialize(self) -> None:
         """Initialize the recommender service with Neo4j database, model, and processors."""
@@ -152,9 +164,13 @@ class RecommenderService:
             name = ".".join(el.split(".", maxsplit=2)[::2])  # skips numeric ID
             self.no_id_kg_elements_map.setdefault(name, []).append(el)
 
+        # ===== debug =====
+        # self.debug_init()
+
         # ===== Mark service as ready =====
         self._ready = True
         logger.info("Completed recommendation model initialization.")
+
 
     def is_ready(self) -> bool:
         return self._ready
@@ -163,7 +179,6 @@ class RecommenderService:
         # TODO: release resources if needed
         self._ready = False
         logger.info("Core shutdown")
-
 
     async def recommend(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Recommend places based on user input.
@@ -192,7 +207,7 @@ class RecommenderService:
         previous_recommendations = payload.get("previous_recommendations", [])
         recommendation_count = payload.get("recommendation_count", 5)
         diversity_factor = payload.get("diversity_factor", 0.5)
-        restrict_preferences = payload.get("restrict_preferences", False)
+        # restrict_preferences = payload.get("restrict_preferences", False)
         # soft_restrictions = payload.get("soft_restrictions", None)
         aversions = payload.get("hard_restrictions", None)
         
@@ -202,8 +217,8 @@ class RecommenderService:
         num_beams = int(adjusted_recommendation_count * 1.5) // 2 * 2 + 2
 
         kwargs = dict(
-            max_length=self.recommender.token_sequence_length,
-            min_length=self.recommender.token_sequence_length,
+            max_length= self.recommender.token_sequence_length,
+            min_length= self.recommender.token_sequence_length,
             paths_per_user=adjusted_recommendation_count,
             num_beams=num_beams,
             num_beam_groups=max(2, num_beams // 2),
@@ -213,13 +228,25 @@ class RecommenderService:
         )
 
         # ===== Get preference item IDs =====
-        with self._neo4j_driver.session() as session:
-            preferences_ids = get_item_ids(session, preferences) if preferences else None
+        preferences_ids = get_item_ids(self.cfg, preferences) if preferences else None
 
+        # ===== Debug logging =====
         logger.debug(f"Generating recommendations with parameters:\n{pformat(kwargs)}")
 
         # ===== Prepare raw inputs based on user existence =====
-        if user_id in self.dataset.field2id_token[self.dataset.uid_field]:
+        if user_id not in self.dataset.field2id_token[self.dataset.uid_field]:
+            logger.info(f"User {user_id} does not exist in dataset, using zero-shot sequence postprocessor.")
+            raw_inputs = prepare_recommender_and_raw_inputs_zero_shot(
+                self.recommender,
+                self.dataset,
+                self.zero_shot_sequence_postprocessor,
+                self.zero_shot_constrained_logits_processors_list,
+                preferences=preferences_ids,
+                previous_recommendations=previous_recommendations,
+                aversions=aversions,
+            )
+        elif user_id in self.dataset.field2id_token[self.dataset.uid_field]:
+            # NOTE: not implemented yet
             logger.info(f"User {user_id} exists in dataset, using existing user sequence postprocessor.")
             raw_inputs = prepare_recommender_and_raw_inputs_existing_user(
                 self.recommender,
@@ -227,18 +254,6 @@ class RecommenderService:
                 self.existing_user_cumulative_sequence_postprocessor,
                 self.constrained_logits_processors_list,
                 user_id,
-            )
-        else:
-            logger.info(f"User {user_id} does not exist in dataset, using zero-shot sequence postprocessor.")
-            logger.debug(f"Preparing raw inputs for zero-shot recommendation with preferences: {preferences_ids}")
-            raw_inputs = prepare_recommender_and_raw_inputs_zero_shot(
-                self.recommender,
-                self.dataset,
-                self.zero_shot_sequence_postprocessor,
-                self.zero_shot_constrained_logits_processors_list,
-                preferences=preferences_ids, # NOTE
-                previous_recommendations=previous_recommendations,
-                aversions=aversions,
             )
 
         # ===== Tokenize inputs =====
@@ -346,6 +361,7 @@ class RecommenderService:
 
         with self._neo4j_driver.session() as session:
             from src.core.info import search
+
             results = search(
                 session,
                 query.get("query", ""),

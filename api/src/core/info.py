@@ -35,12 +35,15 @@ def fetch_place_info(session: neo4j.Session, info: str) -> dict:
     
     logger.info(f"Fetching place info for '{info}' from database...")
     result = session.run(
-        "MATCH (p:Place {name: $info}) "
-        "OPTIONAL MATCH (p)-[:BELONGS_TO_CATEGORY]->(c:Category) "
-        "OPTIONAL MATCH (p)-[:HAS_SENSORY_FEATURE]->(sf:SensoryFeature) "
-        "RETURN p.name AS name, p.address AS address, p.coordinates AS coordinates, "
-        "c.id AS category_id, "
-        "collect({feature_name: sf.feature, rating: sf.value}) AS sensory_features",
+        """
+        MATCH (p:Place {name: $info}) 
+        OPTIONAL MATCH (p)-[:BELONGS_TO_CATEGORY]->(c:Category) 
+        OPTIONAL MATCH (p)-[:HAS_SENSORY_FEATURE]->(sf:SensoryFeature) 
+        RETURN p.name AS name, p.address AS address, p.coordinates AS coordinates, 
+               c.id AS category_id, 
+               collect({feature_name: sf.feature, rating: sf.value}) AS sensory_features
+        LIMIT 1
+        """,
         info=info,
     )
     record = result.single()

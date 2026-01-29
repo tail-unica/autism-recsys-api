@@ -260,7 +260,8 @@ class RecommendationItem(BaseModel):
         default=None,
         description="Human-readable explanation of why this item was recommended",
     )
-    metadata: InfoResponse = Field(
+    metadata: Optional[InfoResponse] = Field(
+        default=None,
         description="Additional information about the recommended place"
     )
 
