@@ -165,7 +165,7 @@ class RecommenderService:
             self.no_id_kg_elements_map.setdefault(name, []).append(el)
 
         # ===== debug =====
-        # self.debug_init()
+        self.debug_init()
 
         # ===== Mark service as ready =====
         self._ready = True
@@ -209,7 +209,8 @@ class RecommenderService:
         diversity_factor = payload.get("diversity_factor", 0.5)
         # restrict_preferences = payload.get("restrict_preferences", False)
         # soft_restrictions = payload.get("soft_restrictions", None)
-        aversions = payload.get("hard_restrictions", None)
+        aversions = payload.get("aversions", None)
+        aversions = {aversion["feature_name"]: aversion["rating"] for aversion in aversions} if aversions else None
         
 
         # ===== Prepare generation parameters =====

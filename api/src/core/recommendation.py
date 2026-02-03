@@ -1,4 +1,5 @@
 from collections.abc import Iterable
+from numpy import arange
 
 from hopwise.utils import PathLanguageModelingTokenType
 
@@ -9,19 +10,57 @@ from src.core.recommendation_tools import (
 from src.core.logger import logger
 from src.core.data import get_item_names
 
+def id2tokenizer_token(dataset, ids, type):
+    """
+    Docstring per id2tokenizer_token
+    
+    :param dataset: Hopwise dataset object
+    :param ids: List of IDs to convert into tokens as they appear in the atomic files.
+    :type ids: list[str]
+    :param type: place, entity, relation, user
+    """
+    def place():
+        # example: "55" -> "I1"
+        token_iid_list = dataset.field2id_token[dataset.iid_field]
+        return {tok: idx for idx, tok in enumerate(token_iid_list)}
 
-def id2tokenizer_token(dataset, _ids):
-    _ids = [_ids] if not isinstance(_ids, Iterable) else _ids
-    tokens = []
-    for _id in _ids:
-        if _id < dataset.item_num:
-            token = PathLanguageModelingTokenType.ITEM.token + str(_id)
-        else:
-            token = PathLanguageModelingTokenType.ENTITY.token + str(_id)
+    def entity():
+        # example: "SensoryFeature.NOISE.2.3" -> "R789"
+        token_eid_list = dataset.field2id_token[dataset.entity_field]
+        return {tok: idx for idx, tok in enumerate(token_eid_list)}
+    
+    def relation():
+        # example: "HAS_SENSORY_FEATURE" -> "R1"
+        token_rid_list = dataset.field2id_token[dataset.relation_field]
+        return {tok: idx for idx, tok in enumerate(token_rid_list)}
 
-        token = dataset.tokenizer.convert_tokens_to_ids(token)
-        tokens.append(token)
-    return tokens
+    def user():
+        # example: "474" -> "U42"
+        raise NotImplementedError("User type not implemented yet.")
+    
+    type_function_map = {
+        "place": place,
+        "entity": entity,
+        "relation": relation,
+        "user": user,
+    }
+
+    type_token_map = {
+        "place": PathLanguageModelingTokenType.ITEM.token,
+        "entity": PathLanguageModelingTokenType.ENTITY.token,
+        "relation": PathLanguageModelingTokenType.RELATION.token,
+        "user": PathLanguageModelingTokenType.USER.token,
+    }
+
+    if type not in type_function_map:
+        raise ValueError(f"Type {type} not recognized. Available types: {list(type_function_map.keys())}")
+    
+    token_map = type_function_map[type]()
+    token_prefix = type_token_map[type]
+    
+    # Convert ids to tokenizer tokens (e.g., "55" -> "I1 -> 101")
+    return [dataset.tokenizer.convert_tokens_to_ids(token_prefix + str(token_map[id])) for id in ids if id in token_map]
+
 
 def token2real_token(token, dataset):
     if token.startswith(PathLanguageModelingTokenType.ITEM.token):
@@ -33,9 +72,84 @@ def token2real_token(token, dataset):
     elif token.startswith(PathLanguageModelingTokenType.RELATION.token):
         token = dataset.field2id_token[dataset.relation_field][int(token[1:])]
     elif token.startswith(PathLanguageModelingTokenType.USER.token):
-        token = "User"
+        token = dataset.field2id_token[dataset.uid_field][int(token[1:])]
 
     return token
+
+sensory_features_map: dict[str, list[str]] = {
+    "LIGHT": ["bright_light", "dim_light"],
+    "SPACE": ["wide_space", "narrow_space"],
+    "CROWD": ["crowd"],
+    "NOISE": ["noise"],
+    "ODOR": ["odor"],
+}
+
+def user_feature_compatibility(aversions: dict[str, float], features: dict[str, float]) -> dict[str, bool]:
+    """
+    Calculates the compatibility level between the user's sensory aversion values 
+    and the sensory features used in the knowledge graph.
+
+    :param aversions: Dictionary mapping idiosyncratic aversions to the user's aversion levels (values from 1 to 5).
+    :type aversions: dict[str, int]
+    :param features: Dictionary representing the sensory features with their respective values.
+    :type features: dict[str, float]
+    :returns: Dictionary associating each sensory feature with a boolean indicating compatibility.
+    :rtype: dict[str, bool]
+    """
+
+    INDIVIDUAL_COMPATIBILITY_THRESHOLD = 3
+    
+    def compute_aversion_high(ft_value, ua):
+        return 1 + (ua - 1) * (ft_value - 1) / (5 - 1)
+
+    def compute_aversion_low(ft_value, ua):
+        return 1 + (ft_value - 5) * (1 - ua) / (5 - 1)
+    
+    def compute_aversion_low_high(low_av, high_av):
+        return max(low_av, high_av)
+
+    sensory_features_compatibility = {}
+
+    for feature, aversions_list in sensory_features_map.items():
+        # f^up strategy
+        if len(aversions_list) == 2:
+            low_aversion = aversions.get(aversions_list[0], 1.0)
+            high_aversion = aversions.get(aversions_list[1], 1.0)
+            sensory_features_compatibility[feature] = compute_aversion_low_high(
+                compute_aversion_low(features[feature], low_aversion),
+                compute_aversion_high(features[feature], high_aversion),
+            ) > INDIVIDUAL_COMPATIBILITY_THRESHOLD
+        # f^V strategy
+        elif len(aversions_list) == 1:
+            aversion = aversions.get(aversions_list[0], 1.0)
+            sensory_features_compatibility[feature] = compute_aversion_high(features[feature], aversion) > INDIVIDUAL_COMPATIBILITY_THRESHOLD
+    
+    return sensory_features_compatibility
+
+def user_feature_mask(aversions: dict[str, float]) -> list[str]:
+    """
+    Generates a list of sensory features that are considered non-compatible based on the user's aversion levels.
+
+    :returns: A list of sensory features in the format "SensoryFeature.{feature}.{value}" that are non-compatible.
+    :rtype: list[str]
+    """
+    LIKERT_STEP = .1
+    LIKERT_RANGE = arange(1.0, 5.0 + LIKERT_STEP, LIKERT_STEP)
+
+    non_compatible_features = set()
+
+    for feature_value in LIKERT_RANGE:
+        compatibility = user_feature_compatibility(aversions, {feature: feature_value for feature in sensory_features_map})
+        for feature, is_compatible in compatibility.items():
+            if not is_compatible:
+                non_compatible_features.add(f"SensoryFeature.{feature}.{feature_value:.1f}")
+
+    return list(non_compatible_features) # example: ["SensoryFeature.NOISE.2.3", "SensoryFeature.LIGHT.4.0", ...]
+
+
+def user_poi_compatibility(aversions: dict, strategy: "min"):
+    pass
+
 
 def prepare_recommender_and_raw_inputs_existing_user(
     recommender,
@@ -69,16 +183,12 @@ def prepare_recommender_and_raw_inputs_zero_shot(  # noqa: PLR0913
     previous_recommendations=None,
     aversions=None,
 ):
-    # TODO: Implements non compatible place as hard restrictions
-    # TODO: Implements aversions as hard restrictions
-
     if not preferences:
         logger.error("No preferences provided for zero-shot recommendation.")
         return None
 
-
-    token_list = dataset.field2id_token[dataset.iid_field]
-    token_to_id = {tok: idx for idx, tok in enumerate(token_list)}
+    token_iid_list = dataset.field2id_token[dataset.iid_field]
+    token_to_iid = {tok: idx for idx, tok in enumerate(token_iid_list)}
 
     preference_ids = []
     for pref in preferences:
@@ -86,7 +196,7 @@ def prepare_recommender_and_raw_inputs_zero_shot(  # noqa: PLR0913
             preference_ids.append(pref)
             continue
 
-        pref_id = token_to_id.get(pref)
+        pref_id = token_to_iid.get(pref)
         if pref_id is None:
             logger.error(
                 f"Value {pref} not found in dataset.field2id_token[{dataset.iid_field}]."
@@ -107,31 +217,38 @@ def prepare_recommender_and_raw_inputs_zero_shot(  # noqa: PLR0913
     recommender.sequence_postprocessor = zero_shot_sequence_postprocessor
     recommender.logits_processor_list = zero_shot_constrained_logits_processors_list
 
-    """
+    
     if previous_recommendations:
+        raise NotImplementedError("Previous recommendations for zero-shot not implemented yet.")
         previous_recommendations = id2tokenizer_token(dataset, previous_recommendations)
 
         for logit_processor in recommender.logits_processor_list:
             if isinstance(logit_processor, ZeroShotConstrainedLogitsProcessor):
                 logit_processor.previous_recommendations = previous_recommendations
 
+
+    hard_restrictions = user_feature_mask(aversions) if aversions else None
+    logger.debug(f"Hard restrictions (real_tokens):\n{hard_restrictions}")
+
+    tokenized_hard_restrictions = id2tokenizer_token(dataset, hard_restrictions, type="entity") if hard_restrictions else None
+    logger.debug(f"Hard restrictions (tokenized):\n{tokenized_hard_restrictions}")
+
     for logit_processor in recommender.logits_processor_list:
         if isinstance(logit_processor, RestrictionLogitsProcessorWordLevel):
-            if hard_restrictions or soft_restrictions:
+            if hard_restrictions:
                 logger.info("Setting restrictions")
-                tokenized_hard_restrictions = id2tokenizer_token(dataset, hard_restrictions) if hard_restrictions else []
-                tokenized_soft_restrictions = id2tokenizer_token(dataset, soft_restrictions) if soft_restrictions else []
 
                 restrictions = {}
-                if tokenized_hard_restrictions or tokenized_soft_restrictions:
+                if tokenized_hard_restrictions:
                     restrictions.update(
                         dict(
                             hard_restrictions=tokenized_hard_restrictions,
-                            soft_restrictions=tokenized_soft_restrictions,
                         )
-                    )"""
+                    )
 
-    return raw_inputs # example: I254
+                logit_processor.set_restrictions(**restrictions)
+
+    return raw_inputs
 
 
 def reset_logits_processors(logits_processor_list):
