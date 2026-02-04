@@ -146,6 +146,64 @@ def user_feature_mask(aversions: dict[str, float]) -> list[str]:
 
     return list(non_compatible_features) # example: ["SensoryFeature.NOISE.2.3", "SensoryFeature.LIGHT.4.0", ...]
 
+import numpy as np
+
+def user_sample_compatible_features(aversions: dict) -> list[str]:
+    LIKERT_STEP = 0.1
+    # Create range [1.0, 5.0] inclusive
+    LIKERT_RANGE = np.arange(1.0, 5.0 + LIKERT_STEP, LIKERT_STEP)
+
+    compatible_features = {}
+    
+    # Identify all compatible values
+    for val in LIKERT_RANGE:
+        val = round(val, 1)
+        # Check compatibility for all features at this value
+        context = {feature: val for feature in sensory_features_map}
+        compatibility = user_feature_compatibility(aversions, context)
+        
+        for feature, is_compatible in compatibility.items():
+            if is_compatible:  # Keep only compatible ones
+                compatible_features.setdefault(feature, []).append(val)
+
+    sampled_compatible_features = []
+    
+    for feature, val_list in compatible_features.items():
+        if not val_list:
+            continue
+            
+        vals = np.array(val_list)
+        
+        # --- Circular Logic ---
+        # Calculate gaps between consecutive values
+        diffs = np.diff(vals)
+        # Calculate the gap wrapping around the 5.0 -> 1.0 boundary
+        # Gap is the empty space at the start (val[0]-1) + empty space at end (5-val[-1])
+        wrap_gap = (vals[0] - 1.0) + (5.0 - vals[-1])
+        
+        all_gaps = np.append(diffs, wrap_gap)
+        max_gap_idx = np.argmax(all_gaps)
+        
+        # If the largest gap is NOT the wrap-around, we must roll the array
+        # so the largest gap becomes the new start/end boundary.
+        if max_gap_idx != len(all_gaps) - 1:
+            vals = np.roll(vals, -(max_gap_idx + 1))
+
+        # --- Random Near Middle ---
+        n = len(vals)
+        mid_idx = n // 2
+        
+        # Apply random jitter (approx +/- 10% of array length)
+        jitter_range = max(1, int(n * 0.1))
+        random_offset = np.random.randint(-jitter_range, jitter_range + 1)
+        
+        # Select index and clip to bounds
+        selected_idx = np.clip(mid_idx + random_offset, 0, n - 1)
+        sampled_value = vals[selected_idx]
+        
+        sampled_compatible_features.append(f"SensoryFeature.{feature}.{sampled_value:.1f}")
+
+    return sampled_compatible_features
 
 def user_poi_compatibility(aversions: dict, strategy: "min"):
     pass
@@ -214,6 +272,19 @@ def prepare_recommender_and_raw_inputs_zero_shot(  # noqa: PLR0913
         for pref_id in preference_ids
     ]
 
+    token_eid_list = dataset.field2id_token[dataset.entity_field]
+    token_to_eid = {tok: idx for idx, tok in enumerate(token_eid_list)}
+
+    raw_inputs.extend([
+        dataset.path_token_separator.join(
+            [
+                dataset.tokenizer.bos_token,
+                PathLanguageModelingTokenType.ENTITY.token + str(token_to_eid[feature])
+            ]
+        )
+        for feature in user_sample_compatible_features(aversions) if feature in token_to_eid
+    ])
+
     recommender.sequence_postprocessor = zero_shot_sequence_postprocessor
     recommender.logits_processor_list = zero_shot_constrained_logits_processors_list
 
@@ -228,10 +299,7 @@ def prepare_recommender_and_raw_inputs_zero_shot(  # noqa: PLR0913
 
 
     hard_restrictions = user_feature_mask(aversions) if aversions else None
-    logger.debug(f"Hard restrictions (real_tokens):\n{hard_restrictions}")
-
     tokenized_hard_restrictions = id2tokenizer_token(dataset, hard_restrictions, type="entity") if hard_restrictions else None
-    logger.debug(f"Hard restrictions (tokenized):\n{tokenized_hard_restrictions}")
 
     for logit_processor in recommender.logits_processor_list:
         if isinstance(logit_processor, RestrictionLogitsProcessorWordLevel):
@@ -262,7 +330,7 @@ def reset_logits_processors(logits_processor_list):
             logit_processor.previous_recommendations = None
 
 
-def unpack_recommendation_sequences_tuples(sequences, dataset, user_id):
+def unpack_recommendation_sequences_tuples(sequences, dataset, user_id, better_explanations=False):
     recommendation_ids = [seq[1] for seq in sequences]
     scores = [seq[2] for seq in sequences]
     explanations = [seq[3] for seq in sequences]
@@ -272,10 +340,19 @@ def unpack_recommendation_sequences_tuples(sequences, dataset, user_id):
     for idx in range(len(explanations)):
         explanations[idx] = [token2real_token(token, dataset) for token in explanations[idx][1:]]
 
+    # EXPLANATIONS FORMATTING
+    # 2. Ti suggeriamo [POI] perché ti è piaciuto [POI], che ha lo stesso livello di [SENSORY FEATURE].
+    #    [BOS] -> [POI] [RELATION] [SENSORY FEATURE] [RELATION] [POI]
+    # 4. Ti suggeriamo [POI] perché è piaciuto ad una persona [USER] a cui, come a te, è piaciuto [POI].
+    #    [BOS] -> [POI] [RELATION] [USER] [RELATION] [POI]
+    # 6. Ti suggeriamo [POI] perché ha un livello di [SENSORY FEATURE] compatibile con il tuo.
+    #    [BOS] -> [SENSORY FEATURE] [RELATION] [POI]
+    # 7. Ti suggeriamo [POI] perché è piaciuto ad una persona [USER] a cui, come a te, danno fastidio [SENSORY FEATURE]. (?) NOTA: non si può fare
+
     try:
         if user_id not in dataset.field2id_token[dataset.uid_field]:
             explanations = [
-                f"User {user_id} has_preference " + " ".join(exp) # .replace(dataset.ui_relation, "interacted_with")
+                f"Siccome ti piace " + " ".join(exp) # .replace(dataset.ui_relation, "interacted_with")
                 for exp in explanations
             ]
 
