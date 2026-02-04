@@ -11,9 +11,9 @@ ENV PATH="/root/.local/bin/:$PATH"
 
 WORKDIR /app
 
-COPY pyproject.toml .
-# COPY uv.lock .
-RUN pip install --upgrade pip
+COPY pyproject.toml ./
+RUN uv pip install --upgrade pip
+RUN uv pip install dgl>=2.4.0 -f https://data.dgl.ai/wheels/torch-2.4/cu124/repo.html --no-deps
 RUN uv pip install --system -p python3.10 .
 # -- or instead of pip install
 # RUN uv sync

@@ -10,5 +10,4 @@ saved/
 *.zip
 *venv/
 data/
-checkpoint/
 embeddings_cache/
