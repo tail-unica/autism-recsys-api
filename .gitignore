@@ -9,5 +9,10 @@ saved/
 *.log
 *.zip
 *venv/
+
 data/
 embeddings_cache/
+log_tensorboard/
+saved/
+logs/
+trained/
