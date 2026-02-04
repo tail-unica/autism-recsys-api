@@ -16,3 +16,4 @@ log_tensorboard/
 saved/
 logs/
 trained/
+checkpoint/
