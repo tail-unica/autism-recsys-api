@@ -148,7 +148,8 @@ export const searchPlaces = async (params: {
     }
   }
 
-  return { places: filterMockPlaces(query, categoryIds).slice(0, limit), source: 'mock' };
+  const fallbackLimit = Math.max(1, limit - apiConfig.recommendations.count);
+  return { places: filterMockPlaces(query, categoryIds).slice(0, fallbackLimit), source: 'mock' };
 };
 
 const buildAversions = (profileAnswers: Record<string, number>) => {
@@ -216,7 +217,8 @@ export const getRecommendations = async (params: {
     }
   }
 
-  const fallbackItems = (mockData as any[])
+  const fallbackItems = [...(mockData as any[])]
+    .reverse()
     .slice(0, apiConfig.recommendations.count)
     .map((entry, index) => normalizeRecommendationFromMock(entry, index));
   return { items: fallbackItems, source: 'mock' };

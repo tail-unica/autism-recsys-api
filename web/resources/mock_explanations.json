@@ -1,18 +1,22 @@
 [
     {
-        "explanation": "Ti suggeriamo questo luogo perchè ti è piaciuto un altro luogo con caratteristiche sensoriali simili.",
+        "base": "Ti suggeriamo questo luogo perchè ti è piaciuto un altro luogo con caratteristiche sensoriali simili.",
+        "explanation": "Ti suggeriamo Balon e Gan Balon perché ti è piacuto Macgillycuddy's PUB che ha un livello di rumore simile.",
         "explanation_type": 2
     },
     {
-        "explanation": "Ti suggeriamo questo luogo perché è piaciuto ad una persona che ha i tuoi stessi gusti.",
+        "base": "Ti suggeriamo questo luogo perché è piaciuto ad una persona che ha i tuoi stessi gusti.",
+        "explanation": "Ti suggeriamo Lego Store - Via Roma perché è piaciuto ad una persona a cui, come a te, piace Parco del Valentino.",
         "explanation_type": 4
     },
     {
-        "explanation": "Ti suggeriamo questo luogo perché ha caratteristiche sensoriali che non ti danno fastidio.",
+        "base": "Ti suggeriamo questo luogo perché ha caratteristiche sensoriali che non ti danno fastidio.",
+        "explanation": "Ti suggeriamo Convitto Umberto I perché ha un livello di odore basso, che non ti dà fastidio.",
         "explanation_type": 6
     },
     {
-        "explanation": "Ti suggeriamo questo luogo perché è piaciuto ad una persona a cui, come te, danno fastidio le stesse caratteristiche sensoriali.",
+        "base": "Ti suggeriamo questo luogo perché è piaciuto ad una persona a cui, come te, danno fastidio le stesse caratteristiche sensoriali.",
+        "explanation": "Ti suggeriamo giardinetti perché è piaciuto ad una persona a cui, come a te, dà fastidio il livello di rumore alto.",
         "explanation_type": 7
     }
 ]

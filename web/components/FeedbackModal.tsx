@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { questions as surveyQuestions } from '../resources/survey';
 import { Recommendation, SensoryFeatureKey } from '../lib/types';
@@ -30,11 +30,20 @@ const SENSORY_EMOJI: Record<SensoryFeatureKey, string> = {
 };
 
 export function FeedbackModal({ recommendation, onClose, onSubmit, onNext, hasNext }: FeedbackModalProps) {
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const [liked, setLiked] = useState<boolean | null>(null);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [comment, setComment] = useState('');
   const [touchedClose, setTouchedClose] = useState(false);
   const totalQuestions = surveyQuestions.length;
+
+  const scrollToTop = (behavior: ScrollBehavior = 'auto') => {
+    scrollContainerRef.current?.scrollTo({ top: 0, behavior });
+  };
+
+  useLayoutEffect(() => {
+    scrollToTop('auto');
+  }, [recommendation.id]);
 
   const handleAnswerChange = (questionId: string, value: number) => {
     setAnswers((prev) => ({ ...prev, [questionId]: value }));
@@ -73,7 +82,10 @@ export function FeedbackModal({ recommendation, onClose, onSubmit, onNext, hasNe
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center p-6 z-50">
-      <div className="bg-[var(--color-bg-secondary)] rounded-3xl p-6 md:p-10 max-w-5xl w-full relative shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div
+        ref={scrollContainerRef}
+        className="bg-[var(--color-bg-secondary)] rounded-3xl p-6 md:p-10 max-w-5xl w-full relative shadow-2xl max-h-[90vh] overflow-y-auto"
+      >
         <button
           onClick={handleClose}
           disabled={!allAnswered}
