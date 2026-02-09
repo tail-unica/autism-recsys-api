@@ -347,7 +347,7 @@ def unpack_recommendation_sequences_tuples(sequences, dataset, user_id, better_e
     #    [BOS] -> [POI] [RELATION] [USER] [RELATION] [POI]
     # 6. Ti suggeriamo [POI] perché ha un livello di [SENSORY FEATURE] compatibile con il tuo.
     #    [BOS] -> [SENSORY FEATURE] [RELATION] [POI]
-    # 7. Ti suggeriamo [POI] perché è piaciuto ad una persona [USER] a cui, come a te, danno fastidio [SENSORY FEATURE]. (?) NOTA: non si può fare
+    # 7. Ti suggeriamo [POI] perché è piaciuto ad una persona [USER] a cui, come a te, danno fastidio [SENSORY FEATURE].
 
     try:
         if user_id not in dataset.field2id_token[dataset.uid_field]:

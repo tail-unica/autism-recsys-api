@@ -23,8 +23,10 @@ services:
       - NVIDIA_VISIBLE_DEVICES=all
 
   web:
-    depends_on: #NOTE: test_react_frontend
+    depends_on:
       api:
+        condition: service_healthy
+      web-server:
         condition: service_healthy
     networks:
       - frontend
