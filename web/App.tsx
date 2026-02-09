@@ -5,6 +5,7 @@ import { FavoritePlacesStep } from './components/FavoritePlacesStep';
 import { RecommendationsStep } from './components/RecommendationsStep';
 import StepProgress, { type StepDefinition } from './components/StepProgress';
 import { Place } from './lib/types';
+import { isAuthenticated, verifyToken, logout, clearToken } from './lib/auth';
 
 type Step = 'nickname' | 'profile' | 'favorites' | 'recommendations';
 
@@ -15,6 +16,33 @@ export default function App() {
   const [isNewUser, setIsNewUser] = useState(false);
   const [profileAnswers, setProfileAnswers] = useState<Record<string, number>>({});
   const [favoritePlaces, setFavoritePlaces] = useState<Place[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Verifica lo stato di autenticazione all'avvio
+  useEffect(() => {
+    const checkAuth = async () => {
+      if (isAuthenticated()) {
+        try {
+          const { valid, hasProfile } = await verifyToken();
+          if (valid) {
+            // Utente già autenticato, salta alla schermata appropriata
+            if (hasProfile) {
+              setCurrentStep('favorites');
+            } else {
+              setCurrentStep('profile');
+            }
+          } else {
+            clearToken();
+          }
+        } catch {
+          clearToken();
+        }
+      }
+      setIsLoading(false);
+    };
+
+    checkAuth();
+  }, []);
 
   useEffect(() => {
     // When switching steps, start the page from the top.
@@ -28,26 +56,28 @@ export default function App() {
     { id: 'recommendations', label: 'Raccomandazioni' },
   ] as const;
 
-  const handleNicknameComplete = (nick: string, nickHash: string, isNew: boolean) => {
+  const handleNicknameComplete = (nick: string, nickHash: string, isNew: boolean, profile?: Record<string, number>, favorites?: Place[]) => {
     // Keep nickname only as volatile UI value.
     setNickname(nick);
     setNicknameHash(nickHash);
     setIsNewUser(isNew);
 
-    // If the user identity changes, don't carry over previous session state.
-    setProfileAnswers({});
-    setFavoritePlaces([]);
+    // Carica i dati dal backend se disponibili
+    if (profile && Object.keys(profile).length > 0) {
+      setProfileAnswers(profile);
+    } else {
+      setProfileAnswers({});
+    }
 
-    // If returning user, check if they have a profile
-    if (!isNew) {
-      const users = JSON.parse(localStorage.getItem('users') || '{}');
-      if (users[nickHash]?.profile) {
-        // Skip profile step if already configured
-        setProfileAnswers(users[nickHash].profile);
-        setCurrentStep('favorites');
-      } else {
-        setCurrentStep('profile');
-      }
+    if (favorites && favorites.length > 0) {
+      setFavoritePlaces(favorites);
+    } else {
+      setFavoritePlaces([]);
+    }
+
+    // Se l'utente ha già un profilo, salta alla selezione dei luoghi
+    if (!isNew && profile && Object.keys(profile).length > 0) {
+      setCurrentStep('favorites');
     } else {
       setCurrentStep('profile');
     }
@@ -55,14 +85,7 @@ export default function App() {
 
   const handleProfileComplete = (answers: Record<string, number>) => {
     setProfileAnswers(answers);
-
-    // Save profile to localStorage (will be moved to Supabase)
-    const users = JSON.parse(localStorage.getItem('users') || '{}');
-    if (users[nicknameHash]) {
-      users[nicknameHash].profile = answers;
-      localStorage.setItem('users', JSON.stringify(users));
-    }
-
+    // Il salvataggio su DB è gestito nel componente ProfileConfigStep
     setCurrentStep('favorites');
   };
 
@@ -95,8 +118,9 @@ export default function App() {
     setCurrentStep(step);
   };
 
-  const handleEndSession = () => {
-    // Reset to start
+  const handleEndSession = async () => {
+    // Logout e reset
+    await logout();
     setCurrentStep('nickname');
     setNickname('');
     setNicknameHash('');
@@ -104,6 +128,17 @@ export default function App() {
     setProfileAnswers({});
     setFavoritePlaces([]);
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--color-primary)] mx-auto mb-4"></div>
+          <p>Caricamento...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen">

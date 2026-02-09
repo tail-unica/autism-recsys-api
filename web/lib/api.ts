@@ -165,7 +165,12 @@ const buildAversions = (profileAnswers: Record<string, number>) => {
 
 const normalizeRecommendationFromApi = (item: any, index: number): Recommendation => {
   const metadata = item?.metadata || {};
-  const placeEntry = metadata.place ? { ...metadata } : item;
+  // Assicurati che sensory_features sia correttamente passato
+  const placeEntry = {
+    ...metadata,
+    place: metadata.place || item.place,
+    sensory_features: metadata.sensory_features || item.sensory_features
+  };
   const place = toPlaceFromApi(placeEntry, index);
   return {
     ...place,

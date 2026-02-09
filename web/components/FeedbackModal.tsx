@@ -4,6 +4,7 @@ import { questions as surveyQuestions } from '../resources/survey';
 import { Recommendation, SensoryFeatureKey } from '../lib/types';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { apiConfig } from '../resources/api_config';
+import { submitFeedback } from '../lib/backend';
 
 interface FeedbackModalProps {
   onClose: () => void;
@@ -11,6 +12,7 @@ interface FeedbackModalProps {
   onNext: () => void;
   hasNext: boolean;
   recommendation: Recommendation;
+  sessionId: string;
 }
 
 const SENSORY_LABELS: Record<SensoryFeatureKey, string> = {
@@ -29,12 +31,13 @@ const SENSORY_EMOJI: Record<SensoryFeatureKey, string> = {
   odor: '👃',
 };
 
-export function FeedbackModal({ recommendation, onClose, onSubmit, onNext, hasNext }: FeedbackModalProps) {
+export function FeedbackModal({ recommendation, sessionId, onClose, onSubmit, onNext, hasNext }: FeedbackModalProps) {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const [liked, setLiked] = useState<boolean | null>(null);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [comment, setComment] = useState('');
   const [touchedClose, setTouchedClose] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const totalQuestions = surveyQuestions.length;
 
   const scrollToTop = (behavior: ScrollBehavior = 'auto') => {
@@ -56,20 +59,46 @@ export function FeedbackModal({ recommendation, onClose, onSubmit, onNext, hasNe
     [recommendation.image]
   );
 
-  const handleClose = () => {
+  // Salva il feedback sul backend
+  const saveFeedback = async () => {
+    if (!allAnswered) return false;
+    
+    setIsSaving(true);
+    try {
+      await submitFeedback({
+        sessionId,
+        placeId: recommendation.id,
+        placeName: recommendation.name,
+        liked: liked as boolean,
+        answers,
+        comment,
+      });
+      return true;
+    } catch (error) {
+      console.error('Errore nel salvataggio del feedback:', error);
+      // Continua comunque, il feedback è stato raccolto
+      return true;
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleClose = async () => {
     if (!allAnswered) {
       setTouchedClose(true);
       return;
     }
+    await saveFeedback();
     onSubmit({ liked: liked as boolean, answers, comment });
     onClose();
   };
 
-  const handleGoNext = () => {
+  const handleGoNext = async () => {
     if (!allAnswered) {
       setTouchedClose(true);
       return;
     }
+    await saveFeedback();
     onSubmit({ liked: liked as boolean, answers, comment });
     onNext();
     setLiked(null);
@@ -260,26 +289,26 @@ export function FeedbackModal({ recommendation, onClose, onSubmit, onNext, hasNe
                   if (!allAnswered) setTouchedClose(true);
                   else handleClose();
                 }}
-                disabled={!allAnswered}
+                disabled={!allAnswered || isSaving}
                 className={`flex-1 py-3 px-6 rounded-xl transition-all ${
-                  allAnswered
+                  allAnswered && !isSaving
                     ? 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white'
                     : 'bg-[var(--color-border)] text-[var(--color-text-secondary)] cursor-not-allowed'
                 }`}
               >
-                Chiudi
+                {isSaving ? 'Salvataggio...' : 'Chiudi'}
               </button>
               <button
                 type="button"
                 onClick={handleGoNext}
-                disabled={!allAnswered || !hasNext}
+                disabled={!allAnswered || !hasNext || isSaving}
                 className={`flex-1 py-3 px-6 rounded-xl transition-all ${
-                  allAnswered && hasNext
+                  allAnswered && hasNext && !isSaving
                     ? 'border-2 border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[var(--color-bg-accent)]'
                     : 'border-2 border-[var(--color-border)] text-[var(--color-text-secondary)] cursor-not-allowed'
                 }`}
               >
-                Prossima
+                {isSaving ? 'Salvataggio...' : 'Prossima'}
               </button>
             </div>
           </div>

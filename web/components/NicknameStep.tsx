@@ -1,14 +1,17 @@
 import { useState } from 'react';
 import { sha256Hex } from '../lib/hash';
+import { login } from '../lib/auth';
+import { Place } from '../lib/types';
 
 interface NicknameStepProps {
   initialNickname?: string;
-  onComplete: (nickname: string, nicknameHash: string, isNewUser: boolean) => void;
+  onComplete: (nickname: string, nicknameHash: string, isNewUser: boolean, profile?: Record<string, number>, favoritePlaces?: Place[]) => void;
 }
 
 export function NicknameStep({ initialNickname = '', onComplete }: NicknameStepProps) {
   const [nickname, setNickname] = useState(initialNickname);
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,42 +23,37 @@ export function NicknameStep({ initialNickname = '', onComplete }: NicknameStepP
       return;
     }
 
-    let nicknameHash: string;
-    try {
-      nicknameHash = await sha256Hex(normalizedNickname);
-    } catch {
-      setError('Impossibile calcolare l\'hash del nickname su questo browser');
+    if (normalizedNickname.length < 2 || normalizedNickname.length > 50) {
+      setError('Il nickname deve essere tra 2 e 50 caratteri');
       return;
     }
 
-    // TODO: Check if user exists in Supabase
-    // For now, simulate with localStorage
-    const existingUsers = JSON.parse(localStorage.getItem('users') || '{}');
+    setIsLoading(true);
 
-    // Backward-compat: migrate legacy storage keyed by plain nickname.
-    if (existingUsers[normalizedNickname] && !existingUsers[nicknameHash]) {
-      const legacy = { ...existingUsers[normalizedNickname] };
-      delete legacy.nickname;
-      existingUsers[nicknameHash] = {
-        ...legacy,
+    try {
+      // Login tramite backend
+      const response = await login(normalizedNickname);
+      
+      // Calcola l'hash anche lato client per uso interno
+      let nicknameHash: string;
+      try {
+        nicknameHash = await sha256Hex(normalizedNickname.toLowerCase());
+      } catch {
+        nicknameHash = response.token.substring(0, 64); // Fallback
+      }
+
+      onComplete(
+        normalizedNickname,
         nicknameHash,
-      };
-      delete existingUsers[normalizedNickname];
-      localStorage.setItem('users', JSON.stringify(existingUsers));
+        response.isNewUser,
+        response.profile || undefined,
+        response.favoritePlaces || undefined
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Errore durante il login');
+    } finally {
+      setIsLoading(false);
     }
-
-    const isNewUser = !existingUsers[nicknameHash];
-
-    if (isNewUser) {
-      existingUsers[nicknameHash] = {
-        nicknameHash,
-        profile: null,
-        createdAt: new Date().toISOString(),
-      };
-      localStorage.setItem('users', JSON.stringify(existingUsers));
-    }
-
-    onComplete(normalizedNickname, nicknameHash, isNewUser);
   };
 
   return (
@@ -83,9 +81,14 @@ export function NicknameStep({ initialNickname = '', onComplete }: NicknameStepP
 
           <button
             type="submit"
-            className="w-full bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white py-3 px-6 rounded-xl transition-colors"
+            disabled={isLoading}
+            className={`w-full py-3 px-6 rounded-xl transition-colors ${
+              isLoading
+                ? 'bg-[var(--color-border)] text-[var(--color-text-secondary)] cursor-not-allowed'
+                : 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white'
+            }`}
           >
-            Continua
+            {isLoading ? 'Accesso in corso...' : 'Continua'}
           </button>
         </form>
       </div>

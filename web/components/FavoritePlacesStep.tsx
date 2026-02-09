@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Search, X, Loader2 } from 'lucide-react';
 import { searchPlaces, availableCategories } from '../lib/api';
+import { updateFavoritePlaces } from '../lib/backend';
 import { apiConfig } from '../resources/api_config';
 import { Place } from '../lib/types';
 
@@ -15,6 +16,7 @@ export function FavoritePlacesStep({ initialPlaces = [], onComplete }: FavoriteP
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(ALL_CATEGORY);
   const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [places, setPlaces] = useState<Place[]>([]);
   const [selectedPlaces, setSelectedPlaces] = useState<Place[]>(initialPlaces);
 
@@ -52,9 +54,21 @@ export function FavoritePlacesStep({ initialPlaces = [], onComplete }: FavoriteP
     setSelectedPlaces((prev) => prev.filter((p) => p.id !== placeId));
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (selectedPlaces.length === 0) return;
-    onComplete(selectedPlaces);
+    
+    setIsSaving(true);
+    try {
+      // Salva i luoghi preferiti sul backend
+      await updateFavoritePlaces(selectedPlaces);
+      onComplete(selectedPlaces);
+    } catch (err) {
+      console.error('Errore nel salvataggio dei luoghi preferiti:', err);
+      // Continua comunque, il salvataggio potrebbe essere ritentato
+      onComplete(selectedPlaces);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -172,14 +186,14 @@ export function FavoritePlacesStep({ initialPlaces = [], onComplete }: FavoriteP
           {/* Continue Button */}
           <button
             onClick={handleContinue}
-            disabled={selectedPlaces.length === 0}
+            disabled={selectedPlaces.length === 0 || isSaving}
             className={`w-full py-3 px-6 rounded-xl transition-colors text-white ${
-              selectedPlaces.length === 0
+              selectedPlaces.length === 0 || isSaving
                 ? 'bg-[var(--color-border)] cursor-not-allowed'
                 : 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]'
             }`}
           >
-            Continua
+            {isSaving ? 'Salvataggio in corso...' : 'Continua'}
           </button>
           {selectedPlaces.length === 0 && (
             <p className="mt-2 text-sm text-[var(--color-error)]">Seleziona almeno un luogo per continuare.</p>

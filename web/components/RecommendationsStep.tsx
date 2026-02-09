@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { FeedbackModal } from './FeedbackModal';
-import { getRecommendations } from '../lib/api';
+import { requestRecommendations, RecommendationResponse } from '../lib/backend';
 import { Place, Recommendation } from '../lib/types';
 import { apiConfig } from '../resources/api_config';
 
@@ -13,6 +13,25 @@ interface RecommendationsStepProps {
   onEndSession: () => void;
 }
 
+// Costruisce le avversioni dal profilo
+const buildAversions = (profileAnswers: Record<string, number>) => {
+  const aversions: Record<string, number> = { ...apiConfig.aversionDefaults };
+  Object.entries(apiConfig.profileQuestionToAversion).forEach(([questionId, aversionKey]) => {
+    const answer = profileAnswers[questionId];
+    if (typeof answer === 'number') {
+      aversions[aversionKey] = answer;
+    }
+  });
+  // Aggiungi anche le risposte dirette alle avversioni
+  const aversionKeys = ['bright_light', 'dim_light', 'crowd', 'noise', 'odor', 'narrow_space', 'wide_space'];
+  aversionKeys.forEach(key => {
+    if (typeof profileAnswers[key] === 'number') {
+      aversions[key] = profileAnswers[key];
+    }
+  });
+  return Object.entries(aversions).map(([feature_name, rating]) => ({ feature_name, rating }));
+};
+
 export function RecommendationsStep({
   userId,
   nickname,
@@ -22,6 +41,7 @@ export function RecommendationsStep({
 }: RecommendationsStepProps) {
   const [loading, setLoading] = useState(true);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [sessionId, setSessionId] = useState<string>('');
   const [activeFeedbackIndex, setActiveFeedbackIndex] = useState<number | null>(null);
 
   useEffect(() => {
@@ -29,12 +49,16 @@ export function RecommendationsStep({
     const fetchRecommendations = async () => {
       setLoading(true);
       try {
-        const { items } = await getRecommendations({
-          userId: userId || 'guest',
-          profileAnswers,
-          favoritePlaces,
+        const response: RecommendationResponse = await requestRecommendations({
+          preferences: favoritePlaces.map(p => p.name),
+          aversions: buildAversions(profileAnswers),
         });
-        if (!cancelled) setRecommendations(items);
+        if (!cancelled) {
+          setRecommendations(response.recommendations as Recommendation[]);
+          setSessionId(response.sessionId);
+        }
+      } catch (error) {
+        console.error('Errore nel recupero delle raccomandazioni:', error);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -46,22 +70,12 @@ export function RecommendationsStep({
     };
   }, [userId, profileAnswers, favoritePlaces]);
 
-  const handleFeedbackSubmit = (
+  const handleFeedbackSubmit = async (
     placeId: string,
     feedback: { liked: boolean; answers: Record<string, number>; comment: string }
   ) => {
-    // TODO: Save feedback to Supabase
-    console.log('Feedback submitted:', { placeId, ...feedback });
-
-    // Save to localStorage for now
-    const allFeedbacks = JSON.parse(localStorage.getItem('feedbacks') || '[]');
-    allFeedbacks.push({
-      userId,
-      placeId,
-      ...feedback,
-      timestamp: new Date().toISOString(),
-    });
-    localStorage.setItem('feedbacks', JSON.stringify(allFeedbacks));
+    // Il salvataggio del feedback è gestito nel FeedbackModal
+    console.log('Feedback submitted:', { placeId, sessionId, ...feedback });
   };
 
   const activeRecommendation =
@@ -151,6 +165,7 @@ export function RecommendationsStep({
       {activeRecommendation && activeFeedbackIndex !== null && (
         <FeedbackModal
           recommendation={activeRecommendation}
+          sessionId={sessionId}
           hasNext={activeFeedbackIndex < recommendations.length - 1}
           onNext={() => {
             setActiveFeedbackIndex((prev) => {

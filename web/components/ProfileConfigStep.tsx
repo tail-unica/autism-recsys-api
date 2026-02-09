@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { questions as aversionQuestions } from '../resources/aversions_questions';
 import { questions as profileQuestions } from '../resources/profile_questions';
+import { updateUserProfile } from '../lib/backend';
 
 interface ProfileConfigStepProps {
   userId: string;
@@ -16,6 +17,8 @@ const totalQuestions = profileQuestions.length + aversionQuestions.length;
 
 export function ProfileConfigStep({ userId: _userId, nickname, initialAnswers = {}, onComplete }: ProfileConfigStepProps) {
   const [answers, setAnswers] = useState<Record<string, number>>(initialAnswers);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   const handleAnswerChange = (questionId: string, value: number | null) => {
     setAnswers((prev) => {
@@ -28,15 +31,26 @@ export function ProfileConfigStep({ userId: _userId, nickname, initialAnswers = 
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSaveError('');
 
     if (Object.keys(answers).length < totalQuestions) {
       alert('Rispondi a tutte le domande per continuare');
       return;
     }
 
-    onComplete(answers);
+    setIsSaving(true);
+
+    try {
+      // Salva il profilo sul backend
+      await updateUserProfile(answers);
+      onComplete(answers);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Errore nel salvataggio del profilo');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const allAnswered = Object.keys(answers).length === totalQuestions;
@@ -160,16 +174,20 @@ export function ProfileConfigStep({ userId: _userId, nickname, initialAnswers = 
               </div>
             </section>
 
+            {saveError && (
+              <p className="text-[var(--color-error)] text-center">{saveError}</p>
+            )}
+
             <button
               type="submit"
-              disabled={!allAnswered}
+              disabled={!allAnswered || isSaving}
               className={`w-full py-3 px-6 rounded-xl transition-all ${
-                allAnswered
+                allAnswered && !isSaving
                   ? 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white'
                   : 'bg-[var(--color-border)] text-[var(--color-text-secondary)] cursor-not-allowed'
               }`}
             >
-              Continua
+              {isSaving ? 'Salvataggio in corso...' : 'Continua'}
             </button>
           </form>
         </div>
