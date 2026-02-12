@@ -31,15 +31,18 @@ export function ProfileConfigStep({ userId: _userId, nickname, initialAnswers = 
     });
   };
 
+  const [showWarning, setShowWarning] = useState(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaveError('');
 
     if (Object.keys(answers).length < totalQuestions) {
-      alert('Rispondi a tutte le domande per continuare');
+      setShowWarning(true);
       return;
     }
 
+    setShowWarning(false);
     setIsSaving(true);
 
     try {
@@ -68,6 +71,7 @@ export function ProfileConfigStep({ userId: _userId, nickname, initialAnswers = 
               type="number"
               min={Number(question.min_label)}
               max={Number(question.max_label)}
+              step={1}
               value={answers[question.id] ?? ''}
               onChange={(event) => {
                 const { value } = event.target;
@@ -75,7 +79,15 @@ export function ProfileConfigStep({ userId: _userId, nickname, initialAnswers = 
                   handleAnswerChange(question.id, null);
                   return;
                 }
-                handleAnswerChange(question.id, Number(value));
+                const parsed = parseInt(value, 10);
+                if (!isNaN(parsed)) {
+                  handleAnswerChange(question.id, parsed);
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E') {
+                  e.preventDefault();
+                }
               }}
               className="w-full py-3 px-4 rounded-xl border-2 border-[var(--color-border)] bg-white focus:border-[var(--color-primary)] focus:outline-none"
             />
@@ -180,7 +192,7 @@ export function ProfileConfigStep({ userId: _userId, nickname, initialAnswers = 
 
             <button
               type="submit"
-              disabled={!allAnswered || isSaving}
+              disabled={isSaving}
               className={`w-full py-3 px-6 rounded-xl transition-all ${
                 allAnswered && !isSaving
                   ? 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white'
@@ -189,6 +201,11 @@ export function ProfileConfigStep({ userId: _userId, nickname, initialAnswers = 
             >
               {isSaving ? 'Salvataggio in corso...' : 'Continua'}
             </button>
+            {showWarning && !allAnswered && (
+              <p className="mt-2 text-sm text-[var(--color-error)] text-center">
+                Compila tutti i campi obbligatori per continuare.
+              </p>
+            )}
           </form>
         </div>
       </div>

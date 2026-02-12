@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Search, X, Loader2 } from 'lucide-react';
-import { searchPlaces, availableCategories } from '../lib/api';
+import { searchPlaces, availableCategories, categoryDisplayName } from '../lib/api';
 import { updateFavoritePlaces } from '../lib/backend';
 import { apiConfig } from '../resources/api_config';
 import { Place } from '../lib/types';
@@ -76,7 +76,7 @@ export function FavoritePlacesStep({ initialPlaces = [], onComplete }: FavoriteP
       <div className="max-w-5xl mx-auto">
         <div className="bg-[var(--color-bg-secondary)] rounded-3xl shadow-sm p-8 md:p-12">
           <h1 className="mb-2">Luoghi che ti piacciono</h1>
-          <p className="mb-8">Seleziona alcuni luoghi che hai già visitato e che ti sono piaciuti</p>
+          <p className="mb-8">Seleziona almeno un luogo che hai visitato e ti è piaciuto</p>
 
           {/* Search Bar */}
           <div className="mb-6">
@@ -168,7 +168,7 @@ export function FavoritePlacesStep({ initialPlaces = [], onComplete }: FavoriteP
                           </div>
                           {place.category && (
                             <span className="inline-flex px-3 py-1 bg-white rounded-full text-sm whitespace-nowrap">
-                              {place.category}
+                              {categoryDisplayName(place.category)}
                             </span>
                           )}
                         </div>

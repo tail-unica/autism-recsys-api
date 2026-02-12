@@ -3,7 +3,6 @@ import mongoose from 'mongoose';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
-import { createProxyMiddleware } from 'http-proxy-middleware';
 import dotenv from 'dotenv';
 
 import authRoutes from './routes/auth.js';
@@ -57,20 +56,6 @@ app.use('/auth', authLimiter, authRoutes);
 app.use('/user', authenticateToken, userRoutes);
 app.use('/recommendation', authenticateToken, recommendationRoutes);
 app.use('/feedback', authenticateToken, feedbackRoutes);
-
-// Proxy to the recommendation API (protected)
-const API_TARGET = process.env.API_TARGET || 'http://api:8100';
-app.use('/api', generalLimiter, authenticateToken, createProxyMiddleware({
-  target: API_TARGET,
-  changeOrigin: true,
-  pathRewrite: {
-    '^/api': '', // Remove /api prefix
-  },
-  onError: (err, req, res) => {
-    console.error('Proxy error:', err.message);
-    res.status(502).json({ error: 'Servizio temporaneamente non disponibile' });
-  },
-}));
 
 // MongoDB connection
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://root:password@mongo:27017/autism?authSource=admin';

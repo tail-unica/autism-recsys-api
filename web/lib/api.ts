@@ -1,15 +1,13 @@
 import { apiConfig } from '../resources/api_config';
 import categories from '../resources/categories.json';
 import mockData from '../resources/mock_data.json';
-import mockExplanations from '../resources/mock_explanations.json';
-import { Place, Recommendation, SensoryFeatureKey, SensoryFeatures } from './types';
+import { Place, SensoryFeatureKey, SensoryFeatures } from './types';
 
 export type ApiSource = 'api' | 'mock';
 
 const apiBase = apiConfig.baseUrl.replace(/\/$/, '');
 const HEALTH_URL = `${apiBase}${apiConfig.endpoints.health}`;
 const SEARCH_URL = `${apiBase}${apiConfig.endpoints.search}`;
-const RECOMMEND_URL = `${apiBase}${apiConfig.endpoints.recommend}`;
 
 const normalizeRating = (value: unknown): number => {
   if (typeof value === 'number') return value;
@@ -51,11 +49,6 @@ const normalizeFeatureSet = (features: unknown): SensoryFeatures => {
   return {};
 };
 
-const pickExplanation = (index: number): string => {
-  if (!Array.isArray(mockExplanations) || mockExplanations.length === 0) return 'Suggerimento basato sulle preferenze inserite.';
-  return mockExplanations[index % mockExplanations.length].explanation;
-};
-
 const toPlaceFromMock = (entry: any, index: number): Place => {
   return {
     id: entry['name:token_seq'] || `mock-${index}`,
@@ -65,7 +58,7 @@ const toPlaceFromMock = (entry: any, index: number): Place => {
     image: entry['image_url:token_seq'] || apiConfig.fallback.placeholderImage,
     coordinates: toCoordinateTuple(entry['coordinates:float_seq']),
     sensory_features: normalizeFeatureSet(entry['sensory_features:token']),
-    category: entry['category:token_seq'] || undefined,
+    category: entry['category:token'] || undefined,
   };
 };
 
@@ -152,81 +145,7 @@ export const searchPlaces = async (params: {
   return { places: filterMockPlaces(query, categoryIds).slice(0, fallbackLimit), source: 'mock' };
 };
 
-const buildAversions = (profileAnswers: Record<string, number>) => {
-  const aversions: Record<string, number> = { ...apiConfig.aversionDefaults };
-  Object.entries(apiConfig.profileQuestionToAversion).forEach(([questionId, aversionKey]) => {
-    const answer = profileAnswers[questionId];
-    if (typeof answer === 'number') {
-      aversions[aversionKey] = answer;
-    }
-  });
-  return Object.entries(aversions).map(([feature_name, rating]) => ({ feature_name, rating }));
-};
-
-const normalizeRecommendationFromApi = (item: any, index: number): Recommendation => {
-  const metadata = item?.metadata || {};
-  // Assicurati che sensory_features sia correttamente passato
-  const placeEntry = {
-    ...metadata,
-    place: metadata.place || item.place,
-    sensory_features: metadata.sensory_features || item.sensory_features
-  };
-  const place = toPlaceFromApi(placeEntry, index);
-  return {
-    ...place,
-    explanation: item?.explanation || pickExplanation(index),
-    score: typeof item?.score === 'number' ? item.score : undefined,
-  };
-};
-
-const normalizeRecommendationFromMock = (entry: any, index: number): Recommendation => {
-  const place = toPlaceFromMock(entry, index);
-  return {
-    ...place,
-    explanation: pickExplanation(index),
-  };
-};
-
-export const getRecommendations = async (params: {
-  userId: string;
-  profileAnswers: Record<string, number>;
-  favoritePlaces: Place[];
-  previousRecommendations?: string[];
-}): Promise<{ items: Recommendation[]; source: ApiSource }> => {
-  const payload = {
-    user_id: params.userId || 'guest',
-    preferences: params.favoritePlaces?.map((place) => place.name) || [],
-    previous_recommendations: params.previousRecommendations || [],
-    recommendation_count: apiConfig.recommendations.count,
-    diversity_factor: apiConfig.recommendations.diversityFactor,
-    restrict_preferences: apiConfig.recommendations.restrictPreferences,
-    aversions: buildAversions(params.profileAnswers),
-  };
-
-  if (await isApiAvailable()) {
-    try {
-      const response = await fetch(RECOMMEND_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (response.ok) {
-        const data = await response.json();
-        const items = Array.isArray(data?.recommendations)
-          ? data.recommendations.map((item: any, index: number) => normalizeRecommendationFromApi(item, index))
-          : [];
-        if (items.length) return { items, source: 'api' };
-      }
-    } catch (error) {
-      console.warn('Chiamata /recommend fallita, uso mock.', error);
-    }
-  }
-
-  const fallbackItems = [...(mockData as any[])]
-    .reverse()
-    .slice(0, apiConfig.recommendations.count)
-    .map((entry, index) => normalizeRecommendationFromMock(entry, index));
-  return { items: fallbackItems, source: 'mock' };
-};
-
 export const availableCategories = () => categories.map((c) => ({ id: c.id, name: c.name }));
+
+const categoryMap = new Map(categories.map((c) => [c.id, c.name]));
+export const categoryDisplayName = (raw: string): string => categoryMap.get(raw) ?? raw.replace(/_/g, ' ');

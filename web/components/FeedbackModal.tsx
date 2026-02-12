@@ -7,12 +7,14 @@ import { apiConfig } from '../resources/api_config';
 import { submitFeedback } from '../lib/backend';
 
 interface FeedbackModalProps {
-  onClose: () => void;
+  onClose: (partial: { liked: boolean | null; answers: Record<string, number>; comment: string }) => void;
   onSubmit: (feedback: { liked: boolean; answers: Record<string, number>; comment: string }) => void;
   onNext: () => void;
   hasNext: boolean;
   recommendation: Recommendation;
   sessionId: string;
+  isCompleted?: boolean;
+  initialState?: { liked: boolean | null; answers: Record<string, number>; comment: string };
 }
 
 const SENSORY_LABELS: Record<SensoryFeatureKey, string> = {
@@ -31,11 +33,11 @@ const SENSORY_EMOJI: Record<SensoryFeatureKey, string> = {
   odor: '👃',
 };
 
-export function FeedbackModal({ recommendation, sessionId, onClose, onSubmit, onNext, hasNext }: FeedbackModalProps) {
+export function FeedbackModal({ recommendation, sessionId, isCompleted, initialState, onClose, onSubmit, onNext, hasNext }: FeedbackModalProps) {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
-  const [liked, setLiked] = useState<boolean | null>(null);
-  const [answers, setAnswers] = useState<Record<string, number>>({});
-  const [comment, setComment] = useState('');
+  const [liked, setLiked] = useState<boolean | null>(initialState?.liked ?? null);
+  const [answers, setAnswers] = useState<Record<string, number>>(initialState?.answers ?? {});
+  const [comment, setComment] = useState(initialState?.comment ?? '');
   const [touchedClose, setTouchedClose] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const totalQuestions = surveyQuestions.length;
@@ -90,7 +92,7 @@ export function FeedbackModal({ recommendation, sessionId, onClose, onSubmit, on
     }
     await saveFeedback();
     onSubmit({ liked: liked as boolean, answers, comment });
-    onClose();
+    onClose({ liked, answers, comment });
   };
 
   const handleGoNext = async () => {
@@ -116,13 +118,8 @@ export function FeedbackModal({ recommendation, sessionId, onClose, onSubmit, on
         className="bg-[var(--color-bg-secondary)] rounded-3xl p-6 md:p-10 max-w-5xl w-full relative shadow-2xl max-h-[90vh] overflow-y-auto"
       >
         <button
-          onClick={handleClose}
-          disabled={!allAnswered}
-          className={`absolute top-4 right-4 transition-colors ${
-            allAnswered
-              ? 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
-              : 'text-[var(--color-border)] cursor-not-allowed'
-          }`}
+          onClick={() => onClose({ liked, answers, comment })}
+          className="absolute top-4 right-4 transition-colors text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
         >
           <X size={24} />
         </button>
