@@ -28,12 +28,19 @@ kg_reverse_r: True
 MAX_PATHS_PER_USER: 50
 path_sample_args:
   collaborative_path: True
-  strategy: simple-ui
+  strategy: metapath
   restrict_by_phase: True
   parallel_max_workers: 0
   MAX_RW_PATHS_PER_HOP: 1
-#val_interval:
-#  rating: "[3.5, inf)"
+metapaths: [
+    [['poi_id', 'HAS_SENSORY_FEATURE', 'entity_id'], ['entity_id', 'HAS_SENSORY_FEATURE_r', 'poi_id']],
+    [['poi_id', '[UI-Relation]', 'user_id'], ['user_id', '[UI-Relation]', 'poi_id']],
+    [['poi_id', 'BELONGS_TO_CATEGORY', 'entity_id'], ['entity_id', 'BELONGS_TO_CATEGORY_r', 'poi_id']],
+    [['poi_id', 'HAS_PLACE_COMPATIBILITY_r', 'user_id'], ['user_id', 'HAS_PLACE_COMPATIBILITY', 'poi_id']],
+    [['poi_id', 'HAS_SENSORY_FEATURE', 'entity_id'], ['entity_id', 'HAS_SENSORY_COMPATIBILITY_r', 'user_id'], ['user_id', '[UI-Relation]', 'poi_id']],
+    [['poi_id', 'BELONGS_TO_CATEGORY', 'entity_id'], ['entity_id', 'HAS_PREFERENCE_r', 'user_id'], ['user_id', 'HAS_PLACE_COMPATIBILITY', 'poi_id']],
+    [['poi_id', 'BELONGS_TO_CATEGORY', 'entity_id'], ['entity_id', 'HAS_PREFERENCE_r', 'user_id'], ['user_id', '[UI-Relation]', 'poi_id']]
+]
 
 # Training
 epochs: 10

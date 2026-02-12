@@ -8,16 +8,33 @@ from hopwise.model.path_language_modeling_recommender.pearlm import PEARLM
 from hopwise.trainer import Trainer
 from hopwise.utils import init_seed, init_logger
 from hopwise.quick_start.quick_start import run_hopwise, run
+import os
+import shutil
+from datetime import datetime
 
 if __name__ == '__main__':
     run_hopwise(
         model='PEARLM',
         dataset='autism', # 'autism' 'ml-100k'
         run='train',
-        config_file_list=['hopwise.yaml'], # 'hopwise.yaml'
+        config_file_list=['experiments.yaml'], # 'hopwise.yaml'
         saved=True,
         checkpoint=None
     )
+
+    src_dir = os.path.join(os.getcwd(), "saved")
+    dst_dir = os.path.join(
+        os.getcwd(),
+        "trained",
+        datetime.now().strftime("%Y%m%d-%H%M%S"),
+    )
+
+    if os.path.isdir(src_dir):
+        os.makedirs(dst_dir, exist_ok=True)
+        for name in os.listdir(src_dir):
+            src_path = os.path.join(src_dir, name)
+            dst_path = os.path.join(dst_dir, name)
+            shutil.move(src_path, dst_path)
 
     """
     config = Config(model='PEARLM', dataset='autism', config_file_list=['hopwise.yaml'])
