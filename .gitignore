@@ -15,5 +15,6 @@ embeddings_cache/
 log_tensorboard/
 saved/
 logs/
+log/
 trained/
 checkpoint/
