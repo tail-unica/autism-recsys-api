@@ -3,6 +3,7 @@ from numpy import arange
 
 from hopwise.utils import PathLanguageModelingTokenType
 
+# These imports are only needed for type checking (e.g. isinstance(logit_processor, RestrictionLogitsProcessorWordLevel))
 from src.core.recommendation_tools import (
     RestrictionLogitsProcessorWordLevel,
     ZeroShotConstrainedLogitsProcessor,
@@ -12,7 +13,7 @@ from src.core.data import get_item_names
 
 def id2tokenizer_token(dataset, ids, type):
     """
-    Docstring per id2tokenizer_token
+    Converts a list of IDs into tokenizer tokens as they appear in the atomic files.
     
     :param dataset: Hopwise dataset object
     :param ids: List of IDs to convert into tokens as they appear in the atomic files.
@@ -149,6 +150,15 @@ def user_feature_mask(aversions: dict[str, float]) -> list[str]:
 import numpy as np
 
 def user_sample_compatible_features(aversions: dict) -> list[str]:
+    """
+    Generates a list of sensory features that are considered compatible based on the user's aversion levels, 
+    and samples one value for each compatible feature using a strategy that favors values near the middle of the compatible range.    
+    
+    :param aversions: Dictionary mapping idiosyncratic aversions to the user's aversion levels (values from 1 to 5).
+    :type aversions: dict[str, float]
+    :return: A list of sensory features in the format "SensoryFeature.{feature}.{value}" that are compatible.
+    :rtype: list[str]
+    """
     LIKERT_STEP = 0.1
     # Create range [1.0, 5.0] inclusive
     LIKERT_RANGE = np.arange(1.0, 5.0 + LIKERT_STEP, LIKERT_STEP)
@@ -245,6 +255,8 @@ def prepare_recommender_and_raw_inputs_zero_shot(  # noqa: PLR0913
         logger.error("No preferences provided for zero-shot recommendation.")
         return None
 
+    logger.debug("preferences: " + str(preferences))
+
     token_iid_list = dataset.field2id_token[dataset.iid_field]
     token_to_iid = {tok: idx for idx, tok in enumerate(token_iid_list)}
 
@@ -262,6 +274,8 @@ def prepare_recommender_and_raw_inputs_zero_shot(  # noqa: PLR0913
             return None
         preference_ids.append(pref_id)
 
+    # Convert preference IDs to tokenizer tokens (e.g., "55" -> "I1 -> 101")
+    # Create a sequence for each preferred item to be used as input for the recommendation model
     raw_inputs = [
         dataset.path_token_separator.join(
             [
@@ -272,9 +286,13 @@ def prepare_recommender_and_raw_inputs_zero_shot(  # noqa: PLR0913
         for pref_id in preference_ids
     ]
 
+    logger.debug(f"Raw inputs after adding preferences: {raw_inputs}")
+
     token_eid_list = dataset.field2id_token[dataset.entity_field]
     token_to_eid = {tok: idx for idx, tok in enumerate(token_eid_list)}
 
+    # Add compatible sensory features to the raw inputs based on the user's aversions
+    # Create a sequence for each compatible sensory feature to be used as input for the recommendation model
     raw_inputs.extend([
         dataset.path_token_separator.join(
             [
@@ -284,6 +302,8 @@ def prepare_recommender_and_raw_inputs_zero_shot(  # noqa: PLR0913
         )
         for feature in user_sample_compatible_features(aversions) if feature in token_to_eid
     ])
+
+    logger.debug(f"Raw inputs after adding preferences and compatible features: {raw_inputs}")
 
     recommender.sequence_postprocessor = zero_shot_sequence_postprocessor
     recommender.logits_processor_list = zero_shot_constrained_logits_processors_list
@@ -333,7 +353,7 @@ def reset_logits_processors(logits_processor_list):
 def unpack_recommendation_sequences_tuples(sequences, dataset, user_id, better_explanations=False):
     recommendation_ids = [seq[1] for seq in sequences]
     scores = [seq[2] for seq in sequences]
-    explanations = [seq[3] for seq in sequences]
+    explanations = [seq[3] for seq in sequences] 
     logger.debug(f"{'Unpacked recommendation IDs'.rjust(27)}: {str(recommendation_ids)}") # 
     logger.debug(f"{'Unpacked scores'.rjust(27)}: {str(scores)}")
     logger.debug(f"{'Unpacked explanations'.rjust(27)}: {str(explanations)}")

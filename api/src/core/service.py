@@ -56,14 +56,45 @@ class RecommenderService:
         return logger
 
     def debug_init(self):
-        logger.debug("field2token_id['poi_id']:")
-        logger.debug(dict(sorted(self.dataset.field2token_id['poi_id'].items(), key=lambda item: item[1])))
+        # logger.debug("field2token_id['poi_id']:")
+        # logger.debug(dict(sorted(self.dataset.field2token_id['poi_id'].items(), key=lambda item: item[1])))
 
-        logger.debug("field2token_id['entity_id']:")
-        logger.debug(dict(sorted(self.dataset.field2token_id['entity_id'].items(), key=lambda item: item[1])))
+        # logger.debug("field2token_id['entity_id']:")
+        # logger.debug(dict(sorted(self.dataset.field2token_id['entity_id'].items(), key=lambda item: item[1])))
 
-        logger.debug("field2id_token:")
-        logger.debug(self.dataset.field2id_token)
+        # logger.debug("field2id_token:")
+        # logger.debug(self.dataset.field2id_token)
+
+        logger.debug("field2token_id['relation_id']:")
+        logger.debug(self.dataset.field2token_id['relation_id'])
+
+        rev_vocab = {v: k for k, v in self.dataset.tokenizer.get_vocab().items()}
+        # logger.debug(rev_vocab)
+        # TODO
+
+        import re
+
+        def _replace_num_with_token(m):
+            idx = int(m.group(0))
+            return rev_vocab.get(idx, m.group(0))
+
+        tokenized_ckg_str = re.sub(r'\d+', _replace_num_with_token, str(self.dataset.get_tokenized_ckg()))
+        
+        logger.debug("tokenized_ckg with token IDs replaced by tokens:")
+        logger.debug(tokenized_ckg_str[:20000])
+
+        def get_relation_id(relation_name):
+            token_id = self.dataset.field2token_id[self.dataset.relation_field].get(relation_name)
+            logger.debug(f"Getting token ID for relation '{relation_name}': {token_id}")
+            if token_id is None:
+                raise ValueError(f"Relation '{relation_name}' not found in dataset field2token_id mapping.")
+            return self.dataset.tokenizer.convert_tokens_to_ids(PathLanguageModelingTokenType.RELATION.token + str(token_id))
+
+
+        logger.debug([
+                [get_relation_id(relation) for relation in path]
+                for path in self.cfg.model.force_paths
+            ])
 
 
     async def initialize(self) -> None:
@@ -83,7 +114,7 @@ class RecommenderService:
         logger.debug("Loading dataset...")
         data_dir = os.path.join(os.path.dirname(__file__), "data")
         with self._neo4j_driver.session() as session:
-            load_data(session, data_dir, dataset=self.cfg.data.dataset)
+            load_data(session, dataset=self.cfg.data.dataset)
 
         # ===== Load model checkpoint and configuration =====
         logger.debug("Loading checkpoint...")
@@ -136,16 +167,24 @@ class RecommenderService:
             propagate_connected_entities=self.cfg.model.propagate_connected_entities,
         )
 
-        ui_relation = self.dataset.field2token_id[self.dataset.relation_field][self.dataset.ui_relation]
+        def get_relation_id(relation_name):
+            token_id = self.dataset.field2token_id[self.dataset.relation_field].get(relation_name)
+            if token_id is None:
+                raise ValueError(f"Relation '{relation_name}' not found in dataset field2token_id mapping.")
+            return self.dataset.tokenizer.convert_tokens_to_ids(PathLanguageModelingTokenType.RELATION.token + str(token_id))
+
+        ui_relation = get_relation_id(self.dataset.ui_relation)
         zero_shot_constrained_logits_processor = ZeroShotConstrainedLogitsProcessor(
             tokenized_ckg=self.dataset.get_tokenized_ckg(),
             tokenized_used_ids=self.dataset.get_tokenized_used_ids(),
             max_sequence_length=10,  # High as sequences for zero-shot should be shorter due to StoppingCriteria trigger
             tokenizer=self.dataset.tokenizer,
             remove_user_tokens_from_sequences=self.cfg.model.remove_user_tokens_from_sequences,
-            tokenized_ui_relation=(
-                self.dataset.tokenizer.convert_tokens_to_ids(PathLanguageModelingTokenType.RELATION.token + str(ui_relation))
-            ),
+            tokenized_ui_relation=ui_relation,
+            force_paths=[
+                [get_relation_id(relation) for relation in path]
+                for path in self.cfg.model.force_paths
+            ] if self.cfg.model.force_paths else [],
         )
         self.zero_shot_constrained_logits_processors_list = LogitsProcessorList(
             [
@@ -214,7 +253,7 @@ class RecommenderService:
         
 
         # ===== Prepare generation parameters =====
-        adjusted_recommendation_count = int(recommendation_count * 2)
+        adjusted_recommendation_count = int(recommendation_count * 4) # Generate more candidates to allow for filtering and diversity
         num_beams = int(adjusted_recommendation_count * 1.5) // 2 * 2 + 2
 
         kwargs = dict(
@@ -248,6 +287,7 @@ class RecommenderService:
             )
         elif user_id in self.dataset.field2id_token[self.dataset.uid_field]:
             # NOTE: not implemented yet
+            raise NotImplementedError("Existing user recommendation generation is not implemented yet.")
             logger.info(f"User {user_id} exists in dataset, using existing user sequence postprocessor.")
             raw_inputs = prepare_recommender_and_raw_inputs_existing_user(
                 self.recommender,

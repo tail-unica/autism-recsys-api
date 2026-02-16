@@ -20,6 +20,21 @@ model:
   remove_user_tokens_from_sequences: false  # If true, user tokens will be removed from sequences in zero-shot recommendation
   tag_offset: 0.1  # Offset for accepting tag matching vs other matching in zero-shot recommendation
 
+  # force_path assumes head and tail of a relation is always the same type of entity (e.g., HAS_SENSORY_FEATURE always connects an item to a sensory feature). If this is not the case, the forced path may not be correctly applied.
+  # NOTE: use carefully with UI-relation
+  force_paths: # Sequences of relation types to force in the generated paths
+    - ['HAS_SENSORY_FEATURE', 'HAS_SENSORY_FEATURE_r'] # type 2. [I] [HAS_SENSORY_FEATURE] [E: sensory_feature] [HAS_SENSORY_FEATURE_r] [I]
+    - ['[UI-Relation]', '[UI-Relation]'] # type 4. [I] [UI-Relation] [U] [UI-Relation] [I]
+    - ['HAS_SENSORY_FEATURE_r'] # type 6. [E: sensory_feature] [HAS_SENSORY_FEATURE_r] [I]
+    - ['HAS_SENSORY_COMPATIBILITY_r', '[UI-Relation]'] # TYPE 7. [E: sensory_feature] [HAS_SENSORY_COMPATIBILITY_r] [U] [UI-Relation] [I]
+  force_path_explanations:
+    - "Ti suggeriamo %(I2) perché ti è piaciuto %(I1), che ha lo stesso livello di %(E1)"
+    - "Ti suggeriamo %(I2) perché è piaciuto ad una persona a cui, come ha te, è piaciuto %(I1)"
+    - "Ti suggeriamo %(I1) perché ha un livello di %(E1) compatibile con te"
+    # NOTE: questa spigazione non si può fare perchè il modello passa per i nodi compatibili, non quelli non compatibili
+    # - "Ti suggeriamo %(I2) perché è piaciuto ad una persona a cui, come ha te danno fastidio %(E1)" 
+    - "Ti suggeriamo %(I1) perché è piaciuto ad una persona con sensibilità a %(E1) simile alla tua"
+
 logging:
   level: "DEBUG"
   # format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

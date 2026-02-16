@@ -35,6 +35,10 @@ class ZeroShotConstrainedLogitsProcessor(ConstrainedLogitsProcessorWordLevel):
         **kwargs,
     ):
         self.remove_user_tokens_from_sequences = kwargs.pop("remove_user_tokens_from_sequences", False)
+        
+        self.force_paths = kwargs.pop("force_paths", [])
+        self.relation_sequence = []
+
         self.tokenized_uids = set(
             [
                 vocab[1]
@@ -119,14 +123,33 @@ class ZeroShotConstrainedLogitsProcessor(ConstrainedLogitsProcessorWordLevel):
                 # return tail given head + relation
                 return self.tokenized_ckg[key1][key2]
             else:
-                # return relations given head
-                return set(self.tokenized_ckg[key1].keys())
+                if self.force_paths:
+                    return set(self.get_allowed_keys(self.tokenized_ckg[key1].keys()))
+                else:
+                    # return relations given head
+                    return set(self.tokenized_ckg[key1].keys())
         else:
-            # If key1 is not in tokenized_ckg, return all keys as candidates. Bad sequence will be filtered out later.
-            # return set(self.tokenized_ckg.keys())
+            # If key1 is not in tokenized_ckg raise an error. This is a sanity check, 
+            # as all tokens in the input should be in the tokenized_ckg. 
+            # If this error is raised, it means that there is a token in the input that is not in the tokenized_ckg, 
+            # which should not happen.
             raise ValueError(
                 f"Key {key1} ('{self.tokenizer.convert_ids_to_tokens(key1)}') not found in tokenized_ckg"
             )
+        
+    def get_allowed_keys(self, keys):
+        # Given a list of relation keys, return the subset of keys that are allowed by the force_paths constraint
+        allowed_keys = set()
+        if not self.relation_sequence:
+            for path in self.force_paths:
+                if path[0] in keys:
+                    allowed_keys.add(path[0])
+        else:
+            for path in self.force_paths:
+                if len(path) > len(self.relation_sequence):
+                    if path[: len(self.relation_sequence)] == self.relation_sequence and path[len(self.relation_sequence)] in keys:
+                        allowed_keys.add(path[len(self.relation_sequence)])
+        return allowed_keys
 
 
 class RestrictionLogitsProcessorWordLevel(ConstrainedLogitsProcessorWordLevel):
@@ -273,10 +296,11 @@ class ZeroShotCumulativeSequenceScorePostProcessor(CumulativeSequenceScorePostPr
     This processor applies a cumulative score to sequences based on their relevance and diversity.
     """
 
-    def __init__(self, tokenizer, item_num, topk=10):
+    def __init__(self, tokenizer, item_num, topk=10, **kwargs):
         self.tokenizer = tokenizer
         self.item_num = item_num
         self.topk = topk
+        self.paths = kwargs.pop("paths", [])
 
     def get_sequences(self, generation_outputs, user_num=1, max_new_tokens=24, previous_recommendations=None):
         normalized_scores = self.normalize_tuple(generation_outputs["scores"])
