@@ -357,7 +357,7 @@ class RecommenderService:
             sequences,
             self.dataset, 
             user_id, 
-            force_path_explanations=True, 
+            better_explanations=True, 
             force_path_explanations=OmegaConf.select(self.cfg, "model.force_path_explanations"), 
             force_paths=OmegaConf.select(self.cfg, "model.force_paths")
         )

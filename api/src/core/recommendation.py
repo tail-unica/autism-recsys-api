@@ -165,6 +165,82 @@ def user_sample_compatible_features(aversions: dict) -> list[str]:
 
     return sampled_compatible_features
 
+# Italian sensory feature labels for human-readable explanations
+sensory_features_it: dict[str, str] = {
+    "LIGHT": "luce",
+    "SPACE": "spazio",
+    "CROWD": "folla",
+    "NOISE": "rumore",
+    "ODOR": "odore",
+}
+
+def _entity_to_italian(entity_name: str) -> str:
+    """Convert a sensory feature entity name (e.g. 'SensoryFeature.NOISE.2.3') to its Italian label."""
+    parts = entity_name.split(".")
+    if len(parts) >= 2 and parts[0] == "SensoryFeature":
+        return sensory_features_it.get(parts[1], entity_name)
+    return entity_name
+
+
+def _match_force_path(raw_tokens, force_paths, dataset):
+    """
+    Match a sequence of raw explanation tokens against the configured force_paths.
+
+    Extracts only the relation tokens from the sequence and compares them
+    against each force_path (resolving '[UI-Relation]' to the dataset's ui_relation).
+
+    :param raw_tokens: List of raw tokens (e.g. ['I55', 'R1', 'E789', 'R2', 'I100']).
+    :param force_paths: List of force_path relation sequences from config.
+    :param dataset: Hopwise dataset object.
+    :returns: Index of the matching force_path, or -1 if no match.
+    """
+    relations = [
+        dataset.field2id_token[dataset.relation_field][int(token[1:])]
+        for token in raw_tokens
+        if token.startswith(PathLanguageModelingTokenType.RELATION.token)
+    ]
+
+    for idx, force_path in enumerate(force_paths):
+        resolved = [dataset.ui_relation if r == '[UI-Relation]' else r for r in force_path]
+        if relations == resolved:
+            return idx
+    return -1
+
+
+def _format_explanation_template(template, raw_tokens, real_tokens):
+    """
+    Format a force_path_explanation template by substituting placeholders.
+
+    Placeholders use the syntax ``%(I1)``, ``%(I2)`` for items,
+    ``%(E1)`` for entities (translated to Italian), ``%(U1)`` for users.
+    The index refers to the n-th occurrence of that token type in the sequence.
+
+    :param template: Explanation template string with placeholders.
+    :param raw_tokens: Raw tokens to determine type (I, E, R, U).
+    :param real_tokens: Converted human-readable tokens.
+    :returns: Formatted explanation string.
+    """
+    items, entities, users = [], [], []
+
+    for raw, real in zip(raw_tokens, real_tokens):
+        if raw.startswith(PathLanguageModelingTokenType.ITEM.token):
+            items.append(real)
+        elif raw.startswith(PathLanguageModelingTokenType.ENTITY.token):
+            entities.append(_entity_to_italian(real))
+        elif raw.startswith(PathLanguageModelingTokenType.USER.token):
+            users.append(real)
+
+    result = template
+    for i, item in enumerate(items, 1):
+        result = result.replace(f"%(I{i})", item)
+    for i, entity in enumerate(entities, 1):
+        result = result.replace(f"%(E{i})", entity)
+    for i, user in enumerate(users, 1):
+        result = result.replace(f"%(U{i})", user)
+
+    return result
+
+
 def user_poi_compatibility(aversions: dict, strategy: "min"):
     pass
 
@@ -318,32 +394,57 @@ def reset_logits_processors(logits_processor_list):
 def unpack_recommendation_sequences_tuples(sequences, dataset, user_id, better_explanations=False, **kwargs):
     recommendation_ids = [seq[1] for seq in sequences]
     scores = [seq[2] for seq in sequences]
-    explanations = [seq[3] for seq in sequences] 
-    logger.debug(f"{'Unpacked recommendation IDs'.rjust(27)}: {str(recommendation_ids)}") # 
+    raw_explanations = [seq[3] for seq in sequences]
+    logger.debug(f"{'Unpacked recommendation IDs'.rjust(27)}: {str(recommendation_ids)}")
     logger.debug(f"{'Unpacked scores'.rjust(27)}: {str(scores)}")
-    logger.debug(f"{'Unpacked explanations'.rjust(27)}: {str(explanations)}")
-    for idx in range(len(explanations)):
-        explanations[idx] = [token2real_token(token, dataset) for token in explanations[idx][1:]]
+    logger.debug(f"{'Unpacked explanations'.rjust(27)}: {str(raw_explanations)}")
+
+    # Convert raw tokens to human-readable tokens (skip BOS at index 0)
+    explanation_pairs = []
+    for raw_exp in raw_explanations:
+        raw_tokens = raw_exp[1:]  # skip BOS
+        real_tokens = [token2real_token(token, dataset) for token in raw_tokens]
+        explanation_pairs.append((raw_tokens, real_tokens))
 
     # EXPLANATIONS FORMATTING
-    # 2. Ti suggeriamo [POI] perché ti è piaciuto [POI], che ha lo stesso livello di [SENSORY FEATURE].
-    #    [BOS] -> [POI] [RELATION] [SENSORY FEATURE] [RELATION] [POI]
-    # 4. Ti suggeriamo [POI] perché è piaciuto ad una persona [USER] a cui, come a te, è piaciuto [POI].
-    #    [BOS] -> [POI] [RELATION] [USER] [RELATION] [POI]
-    # 6. Ti suggeriamo [POI] perché ha un livello di [SENSORY FEATURE] compatibile con il tuo.
-    #    [BOS] -> [SENSORY FEATURE] [RELATION] [POI]
-    # 7. Ti suggeriamo [POI] perché è piaciuto ad una persona [USER] a cui, come a te, danno fastidio [SENSORY FEATURE].
+    # Explanation type is determined by matching the relation sequence against force_paths.
+    # Each force_path has a corresponding template in force_path_explanations:
+    #   2. [I] [HAS_SENSORY_FEATURE] [E] [HAS_SENSORY_FEATURE_r] [I]
+    #      -> "Ti suggeriamo %(I2) perché ti è piaciuto %(I1), che ha lo stesso livello di %(E1)"
+    #   4. [I] [UI-Relation] [U] [UI-Relation] [I]
+    #      -> "Ti suggeriamo %(I2) perché è piaciuto ad una persona a cui, come ha te, è piaciuto %(I1)"
+    #   6. [E] [HAS_SENSORY_FEATURE_r] [I]
+    #      -> "Ti suggeriamo %(I1) perché ha un livello di %(E1) compatibile con te"
+    #   7. [E] [HAS_SENSORY_COMPATIBILITY_r] [U] [UI-Relation] [I]
+    #      -> "Ti suggeriamo %(I1) perché è piaciuto ad una persona con sensibilità a %(E1) simile alla tua"
 
     try:
-        if better_explanations:
-            force_paths = kwargs.get("force_paths", [])
-            force_path_explanations = kwargs.get("force_path_explanations", [])
+        force_paths = kwargs.get("force_paths", [])
+        force_path_explanations_templates = kwargs.get("force_path_explanations", [])
 
-        if user_id not in dataset.field2id_token[dataset.uid_field]:
+        if better_explanations and force_paths and force_path_explanations_templates:
+            explanations = []
+            for raw_tokens, real_tokens in explanation_pairs:
+                path_idx = _match_force_path(raw_tokens, force_paths, dataset)
+                if 0 <= path_idx < len(force_path_explanations_templates):
+                    explanations.append(
+                        _format_explanation_template(
+                            force_path_explanations_templates[path_idx],
+                            raw_tokens,
+                            real_tokens,
+                        )
+                    )
+                else:
+                    # Fallback: join readable tokens
+                    logger.warning(f"No matching force_path for explanation tokens: {raw_tokens}")
+                    explanations.append(" ".join(real_tokens))
+        elif user_id not in dataset.field2id_token[dataset.uid_field]:
             explanations = [
-                f"Siccome ti piace " + " ".join(exp) # .replace(dataset.ui_relation, "interacted_with")
-                for exp in explanations
+                f"Siccome ti piace " + " ".join(real_tokens)
+                for _, real_tokens in explanation_pairs
             ]
+        else:
+            explanations = [" ".join(real_tokens) for _, real_tokens in explanation_pairs]
 
         mapped_recommendations = dataset.field2id_token["name"][dataset.item_feat[recommendation_ids]["name"]].tolist()
         recommendations = [" ".join(filter(lambda x: x != "[PAD]", x)) for x in mapped_recommendations]

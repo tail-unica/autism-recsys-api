@@ -29,10 +29,10 @@ model:
     - ['HAS_SENSORY_COMPATIBILITY_r', '[UI-Relation]'] # TYPE 7. [E: sensory_feature] [HAS_SENSORY_COMPATIBILITY_r] [U] [UI-Relation] [I]
   force_path_explanations:
     - "Ti suggeriamo %(I2) perché ti è piaciuto %(I1), che ha lo stesso livello di %(E1)"
-    - "Ti suggeriamo %(I2) perché è piaciuto ad una persona a cui, come ha te, è piaciuto %(I1)"
+    - "Ti suggeriamo %(I2) perché è piaciuto ad una persona a cui, come a te, è piaciuto %(I1)"
     - "Ti suggeriamo %(I1) perché ha un livello di %(E1) compatibile con te"
     # NOTE: questa spigazione non si può fare perchè il modello passa per i nodi compatibili, non quelli non compatibili
-    # - "Ti suggeriamo %(I2) perché è piaciuto ad una persona a cui, come ha te danno fastidio %(E1)" 
+    # - "Ti suggeriamo %(I2) perché è piaciuto ad una persona a cui, come a te danno fastidio %(E1)" 
     - "Ti suggeriamo %(I1) perché è piaciuto ad una persona con sensibilità a %(E1) simile alla tua"
 
 logging:
