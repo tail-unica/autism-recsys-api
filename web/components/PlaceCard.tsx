@@ -47,9 +47,11 @@ export function PlaceCard({ recommendation, onFeedback }: PlaceCardProps) {
             <MapPin size={16} className="mt-1 flex-shrink-0" />
             <span className="text-sm">{recommendation.address}</span>
           </div>
-          <span className="inline-block px-3 py-1 bg-[var(--color-bg-accent)] rounded-full text-sm">
-            {recommendation.category}
-          </span>
+          {recommendation.category && (
+            <span className="inline-block px-3 py-1 bg-[var(--color-bg-accent)] rounded-full text-sm">
+              {recommendation.category.replace(/_/g, ' ')}
+            </span>
+          )}
         </div>
 
         {/* Sensory Features */}

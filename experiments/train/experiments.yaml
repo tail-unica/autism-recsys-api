@@ -43,12 +43,11 @@ metapaths: [
 ]
 
 # Training
-epochs: 50
+epochs: 100
 train_batch_size: 2048
 learner: adam
-learning_rate: 0.001
-eval_step: 5
-stopping_step: 3
+learning_rate: 0.0001
+stopping_step: 10 
 enable_amp: True
 enable_scaler: True
 
@@ -64,9 +63,9 @@ eval_args:                      # (dict) 4 keys: group_by, order, split, and mod
   mode: full                 # (str) The evaluation mode ranging in ['full','unixxx','popxxx','labeled'].
 
 # Model
-embedding_size: 64
-num_heads: 4
-num_layers: 2
+embedding_size: 768
+num_layers: 4          
+num_heads: 8
 # sequence_postprocessor: BeamSearch
 topk: 10
 

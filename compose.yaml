@@ -83,7 +83,7 @@ services:
     depends_on:
       - web-server
     ports:
-      - "7861:80"
+      - "7890:80"
     networks:
       - frontend
       - backend

@@ -143,8 +143,8 @@ export function FeedbackModal({ recommendation, sessionId, isCompleted, initialS
                   )}
                 </div>
                 {recommendation.category && (
-                  <span className="inline-flex px-3 py-1 bg-white rounded-full text-sm whitespace-nowrap">
-                    {recommendation.category}
+                  <span className="inline-block px-3 py-1 bg-[var(--color-bg-accent)] rounded-full text-sm whitespace-nowrap">
+                    {recommendation.category.replace(/_/g, ' ')}
                   </span>
                 )}
               </div>
