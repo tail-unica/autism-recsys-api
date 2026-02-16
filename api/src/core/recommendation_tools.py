@@ -8,6 +8,59 @@ from transformers import StoppingCriteria
 from src.core.logger import logger
 
 
+def id2tokenizer_token(dataset, ids, type):
+    """
+    Converts a list of IDs (as they appear in the atomic files) into Hopwise tokens.
+    
+    :param dataset: Hopwise dataset object
+    :param ids: List of IDs to convert into tokens as they appear in the atomic files.
+    :type ids: list[str]
+    :param type: place, entity, relation, user
+    """
+
+    def place():
+        # example: "55" -> "I1"
+        token_iid_list = dataset.field2id_token[dataset.iid_field]
+        return {tok: idx for idx, tok in enumerate(token_iid_list)}
+
+    def entity():
+        # example: "SensoryFeature.NOISE.2.3" -> "R789"
+        token_eid_list = dataset.field2id_token[dataset.entity_field]
+        return {tok: idx for idx, tok in enumerate(token_eid_list)}
+    
+    def relation():
+        # example: "HAS_SENSORY_FEATURE" -> "R1"
+        token_rid_list = dataset.field2id_token[dataset.relation_field]
+        return {tok: idx for idx, tok in enumerate(token_rid_list)}
+
+    def user():
+        # example: "474" -> "U42"
+        raise NotImplementedError("User type not implemented yet.")
+    
+    type_function_map = {
+        "place": place,
+        "entity": entity,
+        "relation": relation,
+        "user": user,
+    }
+
+    type_token_map = {
+        "place": PathLanguageModelingTokenType.ITEM.token,
+        "entity": PathLanguageModelingTokenType.ENTITY.token,
+        "relation": PathLanguageModelingTokenType.RELATION.token,
+        "user": PathLanguageModelingTokenType.USER.token,
+    }
+
+    if type not in type_function_map:
+        raise ValueError(f"Type {type} not recognized. Available types: {list(type_function_map.keys())}")
+    
+    token_map = type_function_map[type]()
+    token_prefix = type_token_map[type]
+    
+    # Convert ids to tokenizer tokens (e.g., "55" -> "I1 -> 101")
+    return [dataset.tokenizer.convert_tokens_to_ids(token_prefix + str(token_map[id])) for id in ids if id in token_map]
+
+
 class RestrictionNotApplicable(RuntimeError):
     """
     Exception raised when restrictions cannot be applied. Mainly due to all KG elements being masked.
@@ -82,8 +135,17 @@ class ZeroShotConstrainedLogitsProcessor(ConstrainedLogitsProcessorWordLevel):
                 # If the last token is an item or pad token, we ban all tokens except the pad token
                 banned_mask = np.ones(len(self.tokenizer), dtype=bool)
             else:
-                key, candidate_tokens = self.process_scores_rec(unique_input_ids, idx)
-                banned_mask = self.get_banned_mask(key, candidate_tokens)
+                try:
+                    key, candidate_tokens = self.process_scores_rec(unique_input_ids, idx)
+                    banned_mask = self.get_banned_mask(key, candidate_tokens)
+                except Exception as e:
+                    logger.warning(
+                        f"Could not process scores for input idx {idx} "
+                        f"(last token: '{self.tokenizer.decode(unique_input_ids[idx, -1])}'): {e}. "
+                        f"Banning all tokens except pad for this input."
+                    )
+                    banned_mask = np.ones(len(self.tokenizer), dtype=bool)
+                    banned_mask[self.tokenizer.pad_token_id] = False
 
             if self.previous_recommendations is not None:
                 banned_mask[self.previous_recommendations] = True
@@ -129,13 +191,13 @@ class ZeroShotConstrainedLogitsProcessor(ConstrainedLogitsProcessorWordLevel):
                     # return relations given head
                     return set(self.tokenized_ckg[key1].keys())
         else:
-            # If key1 is not in tokenized_ckg raise an error. This is a sanity check, 
-            # as all tokens in the input should be in the tokenized_ckg. 
-            # If this error is raised, it means that there is a token in the input that is not in the tokenized_ckg, 
-            # which should not happen.
-            raise ValueError(
-                f"Key {key1} ('{self.tokenizer.convert_ids_to_tokens(key1)}') not found in tokenized_ckg"
-            )
+            # If key1 is not in tokenized_ckg, log a warning and return empty set
+            # instead of raising an error. This can happen with special tokens like [MASK].
+            # logger.warning(
+            #     f"Key {key1} ('{self.tokenizer.convert_ids_to_tokens(key1)}') not found in tokenized_ckg. "
+            #     f"Skipping this token and returning empty candidates."
+            # )
+            return set()
         
     def get_allowed_keys(self, keys):
         # Given a list of relation keys, return the subset of keys that are allowed by the force_paths constraint
@@ -300,7 +362,7 @@ class ZeroShotCumulativeSequenceScorePostProcessor(CumulativeSequenceScorePostPr
         self.tokenizer = tokenizer
         self.item_num = item_num
         self.topk = topk
-        self.paths = kwargs.pop("paths", [])
+        self.tokenized_sequence_paths = kwargs.pop("tokenized_sequence_paths", [])
 
     def get_sequences(self, generation_outputs, user_num=1, max_new_tokens=24, previous_recommendations=None):
         normalized_scores = self.normalize_tuple(generation_outputs["scores"])
@@ -315,6 +377,9 @@ class ZeroShotCumulativeSequenceScorePostProcessor(CumulativeSequenceScorePostPr
         valid_sequences_mask = torch.logical_not(torch.isfinite(normalized_sequences_scores))  # false if finite
         normalized_sequences_scores = torch.where(valid_sequences_mask, -torch.inf, normalized_sequences_scores)
 
+        if self.tokenized_sequence_paths:
+            normalized_sequences_scores = self.surface_top_sequences_by_type(sequences, normalized_sequences_scores)
+
         sorted_indices = normalized_sequences_scores.argsort(descending=True)
         sorted_sequences = sequences[sorted_indices]
         sorted_sequences_scores = normalized_sequences_scores[sorted_indices]
@@ -326,6 +391,73 @@ class ZeroShotCumulativeSequenceScorePostProcessor(CumulativeSequenceScorePostPr
             sorted_sequences_scores,
             previous_recommendations=previous_recommendations,
         )
+
+    def _get_sequence_type(self, sequence):
+        """
+        Extracts relation tokens from the sequence and matches them against paths.
+        Returns the index of the matching path.
+        """
+        relation_tokens = [
+            token for token in self.tokenizer.decode(sequence).split(" ")
+            if token.startswith(PathLanguageModelingTokenType.RELATION.token)
+        ]
+        
+        for idx, path in enumerate(self.tokenized_sequence_paths):
+            if relation_tokens == path:
+                return idx
+        
+        return -1
+    
+    def surface_top_sequences_by_type(self, sequences, sequences_scores):
+        """
+        For each sequence type, identifies the sequence with the highest score and 
+        boosts it to ensure diversity in recommendations.
+        Returns modified scores where top sequences per type are ranked at the top.
+        """
+        # Dictionary to track the best sequence for each type
+        best_by_type = {}  # type_idx -> (seq_idx, score)
+        
+        # Identify the best sequence for each type
+        for idx, (sequence, score) in enumerate(zip(sequences, sequences_scores)):
+            if not torch.isfinite(score):
+                continue
+                
+            seq_type = self._get_sequence_type(sequence)
+            
+            if seq_type == -1:
+                # Unknown type, skip
+                continue
+                
+            if seq_type not in best_by_type or score > best_by_type[seq_type][1]:
+                best_by_type[seq_type] = (idx, score)
+        
+        if not best_by_type:
+            return sequences_scores
+        
+        # Create a copy of scores to modify
+        modified_scores = sequences_scores.clone()
+        
+        # Find the maximum score to use as a base for boosting
+        finite_mask = torch.isfinite(sequences_scores)
+        if not finite_mask.any():
+            return sequences_scores
+            
+        max_score = sequences_scores[finite_mask].max()
+        
+        # Boost the top sequences for each type
+        # Assign them scores in descending order starting from max_score + len(best_by_type)
+        sorted_types = sorted(best_by_type.items(), key=lambda x: x[1][1], reverse=True)
+        
+        for rank, (seq_type, (seq_idx, original_score)) in enumerate(sorted_types):
+            boosted_score = max_score + len(sorted_types) - rank
+            logger.debug(
+                f"Boosting sequence idx={seq_idx} (type={seq_type}, "
+                f"path={self.tokenized_sequence_paths[seq_type] if seq_type < len(self.tokenized_sequence_paths) else '?'}): "
+                f"score {original_score:.4f} -> {boosted_score:.4f}"
+            )
+            modified_scores[seq_idx] = boosted_score
+        
+        return modified_scores
 
     def parse_sequences(self, user_index, sequences, sequences_scores, previous_recommendations=None):
         """

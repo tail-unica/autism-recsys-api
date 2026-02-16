@@ -7,60 +7,10 @@ from hopwise.utils import PathLanguageModelingTokenType
 from src.core.recommendation_tools import (
     RestrictionLogitsProcessorWordLevel,
     ZeroShotConstrainedLogitsProcessor,
+    id2tokenizer_token,
 )
 from src.core.logger import logger
 from src.core.data import get_item_names
-
-def id2tokenizer_token(dataset, ids, type):
-    """
-    Converts a list of IDs into tokenizer tokens as they appear in the atomic files.
-    
-    :param dataset: Hopwise dataset object
-    :param ids: List of IDs to convert into tokens as they appear in the atomic files.
-    :type ids: list[str]
-    :param type: place, entity, relation, user
-    """
-    def place():
-        # example: "55" -> "I1"
-        token_iid_list = dataset.field2id_token[dataset.iid_field]
-        return {tok: idx for idx, tok in enumerate(token_iid_list)}
-
-    def entity():
-        # example: "SensoryFeature.NOISE.2.3" -> "R789"
-        token_eid_list = dataset.field2id_token[dataset.entity_field]
-        return {tok: idx for idx, tok in enumerate(token_eid_list)}
-    
-    def relation():
-        # example: "HAS_SENSORY_FEATURE" -> "R1"
-        token_rid_list = dataset.field2id_token[dataset.relation_field]
-        return {tok: idx for idx, tok in enumerate(token_rid_list)}
-
-    def user():
-        # example: "474" -> "U42"
-        raise NotImplementedError("User type not implemented yet.")
-    
-    type_function_map = {
-        "place": place,
-        "entity": entity,
-        "relation": relation,
-        "user": user,
-    }
-
-    type_token_map = {
-        "place": PathLanguageModelingTokenType.ITEM.token,
-        "entity": PathLanguageModelingTokenType.ENTITY.token,
-        "relation": PathLanguageModelingTokenType.RELATION.token,
-        "user": PathLanguageModelingTokenType.USER.token,
-    }
-
-    if type not in type_function_map:
-        raise ValueError(f"Type {type} not recognized. Available types: {list(type_function_map.keys())}")
-    
-    token_map = type_function_map[type]()
-    token_prefix = type_token_map[type]
-    
-    # Convert ids to tokenizer tokens (e.g., "55" -> "I1 -> 101")
-    return [dataset.tokenizer.convert_tokens_to_ids(token_prefix + str(token_map[id])) for id in ids if id in token_map]
 
 
 def token2real_token(token, dataset):
@@ -237,8 +187,10 @@ def prepare_recommender_and_raw_inputs_existing_user(
             ]
         )
     ]
-    recommender.sequence_postprocessor = existing_user_cumulative_sequence_postprocessor
-    recommender.logits_processor_list = constrained_logits_processors_list
+    # Resolve underlying model if wrapped by torch.compile (OptimizedModule)
+    model = getattr(recommender, '_orig_mod', recommender)
+    model.sequence_postprocessor = existing_user_cumulative_sequence_postprocessor
+    model.logits_processor_list = constrained_logits_processors_list
 
     return raw_inputs
 
@@ -248,23 +200,35 @@ def prepare_recommender_and_raw_inputs_zero_shot(  # noqa: PLR0913
     zero_shot_sequence_postprocessor,
     zero_shot_constrained_logits_processors_list,
     preferences=None,
-    previous_recommendations=None,
+    previous_recommendations=[],
     aversions=None,
 ):
+    """
+    Docstring per prepare_recommender_and_raw_inputs_zero_shot
+    
+    :param recommender: Descrizione
+    :param dataset: Descrizione
+    :param zero_shot_sequence_postprocessor: Descrizione
+    :param zero_shot_constrained_logits_processors_list: Descrizione
+    :param preferences: List of items encoded as dataset ids
+    :param previous_recommendations: Descrizione
+    :param aversions: Descrizione
+    """
     if not preferences:
         logger.error("No preferences provided for zero-shot recommendation.")
         return None
 
     logger.debug("preferences: " + str(preferences))
 
+    # Map preferences from dataset IDs to hopwise tokens
     token_iid_list = dataset.field2id_token[dataset.iid_field]
     token_to_iid = {tok: idx for idx, tok in enumerate(token_iid_list)}
 
     preference_ids = []
     for pref in preferences:
-        if isinstance(pref, int):
-            preference_ids.append(pref)
-            continue
+        #if isinstance(pref, int):
+        #    preference_ids.append(pref)
+        #    continue
 
         pref_id = token_to_iid.get(pref)
         if pref_id is None:
@@ -305,15 +269,16 @@ def prepare_recommender_and_raw_inputs_zero_shot(  # noqa: PLR0913
 
     logger.debug(f"Raw inputs after adding preferences and compatible features: {raw_inputs}")
 
-    recommender.sequence_postprocessor = zero_shot_sequence_postprocessor
-    recommender.logits_processor_list = zero_shot_constrained_logits_processors_list
+    # Resolve underlying model if wrapped by torch.compile (OptimizedModule)
+    model = getattr(recommender, '_orig_mod', recommender)
+    model.sequence_postprocessor = zero_shot_sequence_postprocessor
+    model.logits_processor_list = zero_shot_constrained_logits_processors_list
 
-    
+    previous_recommendations.extend(preferences)  # Add preferences to previous recommendations to avoid recommending them again
     if previous_recommendations:
-        raise NotImplementedError("Previous recommendations for zero-shot not implemented yet.")
-        previous_recommendations = id2tokenizer_token(dataset, previous_recommendations)
+        previous_recommendations = id2tokenizer_token(dataset, [token_to_iid.get(item) for item in previous_recommendations], type="place")
 
-        for logit_processor in recommender.logits_processor_list:
+        for logit_processor in model.logits_processor_list:
             if isinstance(logit_processor, ZeroShotConstrainedLogitsProcessor):
                 logit_processor.previous_recommendations = previous_recommendations
 
@@ -321,7 +286,7 @@ def prepare_recommender_and_raw_inputs_zero_shot(  # noqa: PLR0913
     hard_restrictions = user_feature_mask(aversions) if aversions else None
     tokenized_hard_restrictions = id2tokenizer_token(dataset, hard_restrictions, type="entity") if hard_restrictions else None
 
-    for logit_processor in recommender.logits_processor_list:
+    for logit_processor in model.logits_processor_list:
         if isinstance(logit_processor, RestrictionLogitsProcessorWordLevel):
             if hard_restrictions:
                 logger.info("Setting restrictions")
@@ -350,7 +315,7 @@ def reset_logits_processors(logits_processor_list):
             logit_processor.previous_recommendations = None
 
 
-def unpack_recommendation_sequences_tuples(sequences, dataset, user_id, better_explanations=False):
+def unpack_recommendation_sequences_tuples(sequences, dataset, user_id, better_explanations=False, **kwargs):
     recommendation_ids = [seq[1] for seq in sequences]
     scores = [seq[2] for seq in sequences]
     explanations = [seq[3] for seq in sequences] 
@@ -370,6 +335,10 @@ def unpack_recommendation_sequences_tuples(sequences, dataset, user_id, better_e
     # 7. Ti suggeriamo [POI] perché è piaciuto ad una persona [USER] a cui, come a te, danno fastidio [SENSORY FEATURE].
 
     try:
+        if better_explanations:
+            force_paths = kwargs.get("force_paths", [])
+            force_path_explanations = kwargs.get("force_path_explanations", [])
+
         if user_id not in dataset.field2id_token[dataset.uid_field]:
             explanations = [
                 f"Siccome ti piace " + " ".join(exp) # .replace(dataset.ui_relation, "interacted_with")

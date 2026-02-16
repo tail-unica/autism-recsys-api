@@ -6,6 +6,7 @@ from neo4j import GraphDatabase
 import os
 import numpy as np
 import pandas as pd
+from omegaconf import OmegaConf
 
 from src.core.utils import get_cfg
 from src.core.logger import logger
@@ -22,6 +23,7 @@ from src.core.recommendation_tools import (
     RestrictionLogitsProcessorWordLevel,
     ZeroShotConstrainedLogitsProcessor,
     ZeroShotCumulativeSequenceScorePostProcessor,
+    id2tokenizer_token,
 )
 
 import torch
@@ -54,6 +56,7 @@ class RecommenderService:
     @property
     def logger(self):
         return logger
+
 
     def debug_init(self):
         # logger.debug("field2token_id['poi_id']:")
@@ -90,11 +93,11 @@ class RecommenderService:
                 raise ValueError(f"Relation '{relation_name}' not found in dataset field2token_id mapping.")
             return self.dataset.tokenizer.convert_tokens_to_ids(PathLanguageModelingTokenType.RELATION.token + str(token_id))
 
-
+        force_paths = OmegaConf.select(self.cfg, "model.force_paths")
         logger.debug([
                 [get_relation_id(relation) for relation in path]
-                for path in self.cfg.model.force_paths
-            ])
+                for path in force_paths
+            ] if force_paths else [])
 
 
     async def initialize(self) -> None:
@@ -155,7 +158,23 @@ class RecommenderService:
         self.existing_user_cumulative_sequence_postprocessor = CumulativeSequenceScorePostProcessor(
             self.dataset.tokenizer, self.dataset.get_user_used_ids(), self.dataset.item_num
         )
-        self.zero_shot_sequence_postprocessor = ZeroShotCumulativeSequenceScorePostProcessor(self.dataset.tokenizer, self.dataset.item_num)
+        force_paths = OmegaConf.select(self.cfg, "model.force_paths")
+
+        def get_relation_str_token(relation_name):
+            """Convert a relation name to its string token (e.g., 'HAS_SENSORY_FEATURE' -> 'R1')."""
+            token_id = self.dataset.field2token_id[self.dataset.relation_field].get(relation_name)
+            if token_id is None:
+                raise ValueError(f"Relation '{relation_name}' not found in dataset field2token_id mapping.")
+            return PathLanguageModelingTokenType.RELATION.token + str(token_id)
+
+        self.zero_shot_sequence_postprocessor = ZeroShotCumulativeSequenceScorePostProcessor(
+            self.dataset.tokenizer, 
+            self.dataset.item_num,
+            tokenized_sequence_paths=[
+                [get_relation_str_token(relation) for relation in sequence]
+                for sequence in force_paths
+            ] if force_paths else [],
+        )
 
         # ===== Logits Processors Setup =====
         self.constrained_logits_processors_list = self.recommender.logits_processor_list
@@ -174,6 +193,7 @@ class RecommenderService:
             return self.dataset.tokenizer.convert_tokens_to_ids(PathLanguageModelingTokenType.RELATION.token + str(token_id))
 
         ui_relation = get_relation_id(self.dataset.ui_relation)
+        force_paths = OmegaConf.select(self.cfg, "model.force_paths")
         zero_shot_constrained_logits_processor = ZeroShotConstrainedLogitsProcessor(
             tokenized_ckg=self.dataset.get_tokenized_ckg(),
             tokenized_used_ids=self.dataset.get_tokenized_used_ids(),
@@ -183,8 +203,8 @@ class RecommenderService:
             tokenized_ui_relation=ui_relation,
             force_paths=[
                 [get_relation_id(relation) for relation in path]
-                for path in self.cfg.model.force_paths
-            ] if self.cfg.model.force_paths else [],
+                for path in force_paths
+            ] if force_paths else [],
         )
         self.zero_shot_constrained_logits_processors_list = LogitsProcessorList(
             [
@@ -333,7 +353,14 @@ class RecommenderService:
         # ===== Select top recommendations =====
         top_rec_index = sorted(range(len(sequences)), key=lambda i: sequences[i][2], reverse=True)[:recommendation_count]
         sequences = [sequences[i] for i in top_rec_index]
-        unpacked_sequences = unpack_recommendation_sequences_tuples(sequences, self.dataset, user_id)
+        unpacked_sequences = unpack_recommendation_sequences_tuples(
+            sequences,
+            self.dataset, 
+            user_id, 
+            force_path_explanations=True, 
+            force_path_explanations=OmegaConf.select(self.cfg, "model.force_path_explanations"), 
+            force_paths=OmegaConf.select(self.cfg, "model.force_paths")
+        )
         if unpacked_sequences is None:
             return None
 
