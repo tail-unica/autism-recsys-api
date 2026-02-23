@@ -72,8 +72,11 @@ services:
       retries: 10
       start_period: 20s
     networks:
-      - backend
-      - frontend
+      backend:
+      frontend:
+      edge:
+        aliases:
+          - autismo-api
 
   web:
     build: ./web
@@ -85,8 +88,11 @@ services:
     ports:
       - "7890:80"
     networks:
-      - frontend
-      - backend
+      frontend:
+      backend:
+      edge:
+        aliases:
+          - autismo-web
 
   web-server:
     build:
@@ -139,6 +145,8 @@ networks:
     driver: bridge
   frontend:
     driver: bridge
+  edge:
+    external: true
 
 volumes:
   neo4j_data:

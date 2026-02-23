@@ -1,7 +1,7 @@
 // Gestione dell'autenticazione con JWT
 
 const AUTH_TOKEN_KEY = 'auth_token';
-const BACKEND_BASE = '/backend';
+const BACKEND_BASE = `${import.meta.env.BASE_URL}backend`;
 
 export interface AuthResponse {
   token: string;

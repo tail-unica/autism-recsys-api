@@ -1,5 +1,5 @@
 export const apiConfig = {
-  baseUrl: '/api',
+  baseUrl: `${import.meta.env.BASE_URL}api`,
   endpoints: {
     health: '/health',
     search: '/search',

@@ -4,7 +4,7 @@ import { getAuthHeaders, clearToken } from './auth';
 import { Place, Recommendation, SensoryFeatures, SensoryFeatureKey } from './types';
 import { apiConfig } from '../resources/api_config';
 
-const BACKEND_BASE = '/backend';
+const BACKEND_BASE = `${import.meta.env.BASE_URL}backend`;
 
 // Gestione errori di autenticazione
 const handleAuthError = (response: Response) => {
