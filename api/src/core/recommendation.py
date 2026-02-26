@@ -66,14 +66,14 @@ def user_feature_compatibility(aversions: dict[str, float], features: dict[str, 
         if len(aversions_list) == 2:
             low_aversion = aversions.get(aversions_list[0], 1.0)
             high_aversion = aversions.get(aversions_list[1], 1.0)
-            sensory_features_compatibility[feature] = compute_aversion_low_high(
+            sensory_features_compatibility[feature] = 5 + 1 - compute_aversion_low_high(
                 compute_aversion_low(features[feature], low_aversion),
                 compute_aversion_high(features[feature], high_aversion),
             ) > INDIVIDUAL_COMPATIBILITY_THRESHOLD
         # f^V strategy
         elif len(aversions_list) == 1:
             aversion = aversions.get(aversions_list[0], 1.0)
-            sensory_features_compatibility[feature] = compute_aversion_high(features[feature], aversion) > INDIVIDUAL_COMPATIBILITY_THRESHOLD
+            sensory_features_compatibility[feature] = 5 + 1 - compute_aversion_high(features[feature], aversion) > INDIVIDUAL_COMPATIBILITY_THRESHOLD
     
     return sensory_features_compatibility
 
@@ -95,6 +95,7 @@ def user_feature_mask(aversions: dict[str, float]) -> list[str]:
             if not is_compatible:
                 non_compatible_features.add(f"SensoryFeature.{feature}.{feature_value:.1f}")
 
+    # logger.debug(f"Generated non-compatible features based on aversions {aversions}: {non_compatible_features}")
     return list(non_compatible_features) # example: ["SensoryFeature.NOISE.2.3", "SensoryFeature.LIGHT.4.0", ...]
 
 import numpy as np
@@ -125,6 +126,8 @@ def user_sample_compatible_features(aversions: dict) -> list[str]:
         for feature, is_compatible in compatibility.items():
             if is_compatible:  # Keep only compatible ones
                 compatible_features.setdefault(feature, []).append(val)
+
+    logger.debug(f"Compatible features by value based on aversions {aversions}: {compatible_features}")
 
     sampled_compatible_features = []
     

@@ -1,5 +1,7 @@
 from typing import Literal, Optional, List, Dict, Any
 import json
+import math
+from typing import Any
 from pprint import pformat
 
 from fastapi import APIRouter, Request, Depends, HTTPException, status, Query
@@ -59,15 +61,23 @@ async def search_places(
 
     search_results = await service.search_places(query=request.model_dump())
 
-    service.logger.info(
-        "API search_places: response:\n%s",
-        json.dumps(
-            search_results if not isinstance(search_results, str) else json.loads(search_results),
-            indent=2,
-            sort_keys=True,
-            ensure_ascii=False,
-            default=str,
-        ),
-    )
+    def _sanitize_for_json(obj: Any):
+        if isinstance(obj, dict):
+            return {k: _sanitize_for_json(v) for k, v in obj.items()}
+        if isinstance(obj, list):
+            return [_sanitize_for_json(v) for v in obj]
+        if isinstance(obj, float):
+            if not math.isfinite(obj):
+                return None
+            return round(obj, 1)
+        return obj
+
+    raw = search_results if not isinstance(search_results, str) else json.loads(search_results)
+    try:
+        pretty = json.dumps(raw, indent=2, sort_keys=True, ensure_ascii=False)
+    except (ValueError, TypeError):
+        pretty = json.dumps(_sanitize_for_json(raw), indent=2, sort_keys=True, ensure_ascii=False)
+
+    service.logger.info("API search_places: response:\n%s", pretty)
 
     return SearchResponse(**search_results)

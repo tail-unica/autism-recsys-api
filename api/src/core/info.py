@@ -1,4 +1,6 @@
 import neo4j
+import math
+from typing import Any
 from typing import List
 from src.core.logger import logger
 from pprint import pformat
@@ -8,11 +10,24 @@ def _parse_geojson_from_neo4j_point(point: neo4j.spatial.Point, properties: dict
     """Parse a Neo4j Point object into a GeoJSON dictionary."""
     try:
         lon, lat = point.x, point.y
+        # sanitize numeric types: replace non-finite with None and round to 1 decimal
+        def _sanitize_num(v: Any):
+            try:
+                if isinstance(v, (int,)):
+                    return v
+                if isinstance(v, float):
+                    if not math.isfinite(v):
+                        return None
+                    return round(v, 1)
+            except Exception:
+                return None
+            return v
+
         return {
             "type": "Feature",
             "geometry": {
                 "type": "Point",
-                "coordinates": [lon, lat],
+                "coordinates": [_sanitize_num(lon), _sanitize_num(lat)],
             },
             "properties": properties or {},
         }
@@ -60,7 +75,7 @@ def fetch_place_info(session: neo4j.Session, info: str) -> dict:
             "sensory_features": [
                 {
                     "feature_name": sf["feature_name"].lower(),
-                    "rating": sf["rating"]
+                    "rating": (None if not isinstance(sf.get("rating"), (int, float)) else (None if not math.isfinite(float(sf.get("rating"))) else round(float(sf.get("rating")), 1)))
                 }
                 for sf in record["sensory_features"]
                 if sf["feature_name"] is not None
