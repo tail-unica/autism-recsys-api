@@ -11,9 +11,9 @@ aversions:
   strategy: "min" # Options: 'min', 'avg', 'cos', 'rmsd'
 
 model:
-  model_name: "PEARLM"
+  model_name: "KGGLM" # "PEARLM"
   device: "cuda" # "cuda" or "cpu"
-  hopwise_checkpoint_file: "checkpoint/hopwise-distilgpt2-PEARLM-Jan-29-2026_14-50-24.pth"
+  hopwise_checkpoint_file: "checkpoint/hopwise-distilgpt2-KGGLM-Mar-05-2026_15-19-51.pth"
   diversity_factor: 0.3
   propagate_connected_entities: false  # If true, entities connected with restricted KG elements will also be restricted
   compile_mode: "default"  # Options: "default", "reduce-overhead", "max-autotune"
@@ -31,9 +31,8 @@ model:
     - "Ti suggeriamo %(I2) perché ti è piaciuto %(I1), che ha lo stesso livello di %(E1)"
     - "Ti suggeriamo %(I2) perché è piaciuto ad una persona a cui, come a te, è piaciuto %(I1)"
     - "Ti suggeriamo %(I1) perché ha un livello di %(E1) compatibile con te"
-    # NOTE: questa spigazione non si può fare perchè il modello passa per i nodi compatibili, non quelli non compatibili
-    # - "Ti suggeriamo %(I2) perché è piaciuto ad una persona a cui, come a te danno fastidio %(E1)" 
     - "Ti suggeriamo %(I1) perché è piaciuto ad una persona con sensibilità a %(E1) simile alla tua"
+  better_readability: true  # If true, item tokens in explanations will be wrapped in <strong> tags for better readability in the UI
 
 logging:
   level: "DEBUG"

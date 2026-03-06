@@ -210,7 +210,7 @@ def _match_force_path(raw_tokens, force_paths, dataset):
     return -1
 
 
-def _format_explanation_template(template, raw_tokens, real_tokens):
+def _format_explanation_template(template, raw_tokens, real_tokens, better_readability=True):
     """
     Format a force_path_explanation template by substituting placeholders.
 
@@ -223,6 +223,11 @@ def _format_explanation_template(template, raw_tokens, real_tokens):
     :param real_tokens: Converted human-readable tokens.
     :returns: Formatted explanation string.
     """
+    def _better_readability(token):
+        if better_readability:
+            return f'**{token}**'
+        return f'{token}'
+
     items, entities, users = [], [], []
 
     for raw, real in zip(raw_tokens, real_tokens):
@@ -235,11 +240,11 @@ def _format_explanation_template(template, raw_tokens, real_tokens):
 
     result = template
     for i, item in enumerate(items, 1):
-        result = result.replace(f"%(I{i})", item)
+        result = result.replace(f"%(I{i})", _better_readability(item))
     for i, entity in enumerate(entities, 1):
-        result = result.replace(f"%(E{i})", entity)
+        result = result.replace(f"%(E{i})", _better_readability(entity))
     for i, user in enumerate(users, 1):
-        result = result.replace(f"%(U{i})", user)
+        result = result.replace(f"%(U{i})", _better_readability(user))
 
     return result
 
@@ -281,6 +286,7 @@ def prepare_recommender_and_raw_inputs_zero_shot(  # noqa: PLR0913
     preferences=None,
     previous_recommendations=[],
     aversions=None,
+    better_readability=True,
 ):
     """
     Docstring per prepare_recommender_and_raw_inputs_zero_shot
@@ -292,6 +298,7 @@ def prepare_recommender_and_raw_inputs_zero_shot(  # noqa: PLR0913
     :param preferences: List of items encoded as dataset ids
     :param previous_recommendations: Descrizione
     :param aversions: Descrizione
+    :param better_readability: Flag to enable better readability formatting
     """
     if not preferences:
         logger.error("No preferences provided for zero-shot recommendation.")
@@ -355,11 +362,11 @@ def prepare_recommender_and_raw_inputs_zero_shot(  # noqa: PLR0913
 
     previous_recommendations.extend(preferences)  # Add preferences to previous recommendations to avoid recommending them again
     if previous_recommendations:
-        previous_recommendations = id2tokenizer_token(dataset, [token_to_iid.get(item) for item in previous_recommendations], type="place")
+        previous_recommendations = id2tokenizer_token(dataset, previous_recommendations, type="place")
 
         for logit_processor in model.logits_processor_list:
             if isinstance(logit_processor, ZeroShotConstrainedLogitsProcessor):
-                logit_processor.previous_recommendations = previous_recommendations
+                logit_processor.set_previous_recommendations(previous_recommendations)
 
 
     hard_restrictions = user_feature_mask(aversions) if aversions else None
@@ -391,7 +398,7 @@ def reset_logits_processors(logits_processor_list):
             logit_processor.clear_restrictions()
         elif isinstance(logit_processor, ZeroShotConstrainedLogitsProcessor):
             # Clear previous recommendations after generation
-            logit_processor.previous_recommendations = None
+            logit_processor.set_previous_recommendations(None)
 
 
 def unpack_recommendation_sequences_tuples(sequences, dataset, user_id, better_explanations=False, **kwargs):
@@ -424,6 +431,7 @@ def unpack_recommendation_sequences_tuples(sequences, dataset, user_id, better_e
     try:
         force_paths = kwargs.get("force_paths", [])
         force_path_explanations_templates = kwargs.get("force_path_explanations", [])
+        better_readability = kwargs.get("better_readability", True)
 
         if better_explanations and force_paths and force_path_explanations_templates:
             explanations = []
@@ -435,6 +443,7 @@ def unpack_recommendation_sequences_tuples(sequences, dataset, user_id, better_e
                             force_path_explanations_templates[path_idx],
                             raw_tokens,
                             real_tokens,
+                            better_readability=better_readability,
                         )
                     )
                 else:

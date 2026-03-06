@@ -112,6 +112,27 @@ class ZeroShotConstrainedLogitsProcessor(ConstrainedLogitsProcessorWordLevel):
             **kwargs,
         )
 
+    def set_previous_recommendations(self, previous_recommendations):
+        """
+        Set the previous recommendations to be masked in the next generation step.
+        
+        :param previous_recommendations: List or set of token IDs to mask
+        """
+        if previous_recommendations is None:
+            self.previous_recommendations = None
+            return
+
+        token_ids = set(previous_recommendations)
+        vocab_size = len(self.tokenizer)
+        valid_token_ids = {tid for tid in token_ids if 0 <= tid < vocab_size}
+        invalid_count = len(token_ids) - len(valid_token_ids)
+
+        if invalid_count:
+            logger.warning(f"set_previous_recommendations: {invalid_count} invalid token IDs skipped (vocab_size={vocab_size})")
+
+        self.previous_recommendations = valid_token_ids if valid_token_ids else None
+        logger.debug(f"previous_recommendations: {len(valid_token_ids)} tokens masked")
+
     def __call__(self, input_ids, scores):
         """
         Process the logits to apply constraints based on user preferences and restrictions.
@@ -147,8 +168,12 @@ class ZeroShotConstrainedLogitsProcessor(ConstrainedLogitsProcessorWordLevel):
                     banned_mask = np.ones(len(self.tokenizer), dtype=bool)
                     banned_mask[self.tokenizer.pad_token_id] = False
 
-            if self.previous_recommendations is not None:
-                banned_mask[self.previous_recommendations] = True
+            if self.previous_recommendations:
+                try:
+                    prev_recs_array = np.array(list(self.previous_recommendations), dtype=np.int64)
+                    banned_mask[prev_recs_array] = True
+                except (IndexError, ValueError) as e:
+                    logger.error(f"Failed to apply previous_recommendations mask: {e}")
 
             if banned_mask.all():
                 banned_mask[self.tokenizer.pad_token_id] = False
@@ -378,6 +403,7 @@ class ZeroShotCumulativeSequenceScorePostProcessor(CumulativeSequenceScorePostPr
         normalized_sequences_scores = torch.where(valid_sequences_mask, -torch.inf, normalized_sequences_scores)
 
         if self.tokenized_sequence_paths:
+            normalized_sequences_scores = torch.where(self.force_paths_mask(sequences), normalized_sequences_scores, -torch.inf)
             normalized_sequences_scores = self.surface_top_sequences_by_type(sequences, normalized_sequences_scores)
 
         sorted_indices = normalized_sequences_scores.argsort(descending=True)
@@ -407,6 +433,34 @@ class ZeroShotCumulativeSequenceScorePostProcessor(CumulativeSequenceScorePostPr
                 return idx
         
         return -1
+    
+    def force_paths_mask(self, sequences):
+        """
+        Creates a mask indicating which sequences match the configured tokenized_sequence_paths.
+        
+        Extracts relation tokens from each sequence and compares them against the tokenized_sequence_paths.
+        Only sequences that match one of the paths are marked as valid (True).
+        
+        :param sequences: Tensor of shape (num_sequences, sequence_length) containing token IDs
+        :return: Boolean tensor of shape (num_sequences,) where True means the sequence matches a tokenized_sequence_path
+        """
+        mask = torch.zeros(sequences.shape[0], dtype=torch.bool, device=sequences.device)
+        
+        for idx, sequence in enumerate(sequences):
+            # Extract relation tokens from the sequence (e.g., 'R1', 'R2', ...)
+            relation_tokens = [
+                token for token in self.tokenizer.decode(sequence).split(" ")
+                if token.startswith(PathLanguageModelingTokenType.RELATION.token)
+            ]
+            
+            # Check if this sequence matches any tokenized_sequence_path
+            for path in self.tokenized_sequence_paths:
+                if relation_tokens == path:
+                    mask[idx] = True
+                    break
+        
+        return mask
+
     
     def surface_top_sequences_by_type(self, sequences, sequences_scores):
         """

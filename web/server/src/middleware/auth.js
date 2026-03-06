@@ -5,11 +5,12 @@ const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(64).toString('he
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 
 // Genera un token JWT per l'utente
-export const generateToken = (userId, nicknameHash) => {
+export const generateToken = (userId, nicknameHash, tokenId = crypto.randomUUID()) => {
   return jwt.sign(
     { 
       userId, 
       nicknameHash,
+      tokenId,
       iat: Math.floor(Date.now() / 1000),
     },
     JWT_SECRET,

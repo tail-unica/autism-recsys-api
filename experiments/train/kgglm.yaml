@@ -1,0 +1,89 @@
+# Logger
+state: DEBUG
+
+# Dataset
+dataset: autism
+data_path: ../data
+save_dataset: True
+save_dataloaders: True
+USER_ID_FIELD: user_id
+ITEM_ID_FIELD: poi_id
+LABEL_FIELD: rating
+load_col:
+  inter: ['user_id', 'poi_id', 'rating']
+  kg: ['head_id', 'relation_id', 'tail_id']
+  item_link: ['poi_id', 'entity_id']
+  user_link: ['user_id', 'entity_id']
+  item: ['poi_id', 'name']
+  user: ['user_id', 'autism']
+  # link: ['item_id', 'entity_id']
+
+# Data processing
+#user_inter_num_interval: '[5,inf)'
+#item_inter_num_interval: '[5,inf)'
+# entity_kg_num_interval: '[30,inf)'
+#relation_kg_num_interval: '[1,inf)'
+kg_reverse_r: True
+# path_hop_length: 3
+MAX_PATHS_PER_USER: 1000
+path_sample_args:
+  collaborative_path: True
+  strategy: metapath
+  restrict_by_phase: True
+  parallel_max_workers: -1  # workaround: il branch seriale (0) dimentica di passare **kwargs a _generate_paths_random_walks
+  MAX_RW_PATHS_PER_HOP: 1
+  pretrain_hop_length: '(2,2)' # (tuple) The range of the hop length for pre-training.
+  pretrain_paths: 20
+metapaths: [
+    [['poi_id', 'HAS_SENSORY_FEATURE', 'entity_id'], ['entity_id', 'HAS_SENSORY_FEATURE_r', 'poi_id']],
+    [['poi_id', '[UI-Relation]', 'user_id'], ['user_id', '[UI-Relation]', 'poi_id']],
+    [['poi_id', 'HAS_PLACE_COMPATIBILITY_r', 'user_id'], ['user_id', 'HAS_PLACE_COMPATIBILITY', 'poi_id']],
+    [['poi_id', 'HAS_SENSORY_FEATURE', 'entity_id'], ['entity_id', 'HAS_SENSORY_COMPATIBILITY_r', 'user_id'], ['user_id', '[UI-Relation]', 'poi_id']]
+    # [['poi_id', 'BELONGS_TO_CATEGORY', 'entity_id'], ['entity_id', 'HAS_PREFERENCE_r', 'user_id'], ['user_id', 'HAS_PLACE_COMPATIBILITY', 'poi_id']],
+    # [['poi_id', 'BELONGS_TO_CATEGORY', 'entity_id'], ['entity_id', 'HAS_PREFERENCE_r', 'user_id'], ['user_id', '[UI-Relation]', 'poi_id']]
+    # [['poi_id', 'BELONGS_TO_CATEGORY', 'entity_id'], ['entity_id', 'BELONGS_TO_CATEGORY_r', 'poi_id']],
+]
+
+# Training
+epochs: 60 # 50
+learning_rate: 2e-4
+weight_decay: 0.01
+warmup_steps: 250 # (int) Number of warmup steps for learning rate scheduler.
+train_batch_size: 256
+learner: adam
+eval_step: 5
+stopping_step: 3
+enable_amp: False
+enable_scaler: False
+
+# Evaluation
+eval_batch_size: 64
+valid_metric: NDCG@10
+valid_metric_bigger: True
+metrics: ["Recall", "NDCG", "Precision", "ShannonEntropy", "Novelty", "ItemCoverage"]
+eval_args:                      # (dict) 4 keys: group_by, order, split, and mode
+  split: {'RS':[0.8,0.1,0.1]}   # (dict) The splitting strategy ranging in ['RS','LS'].
+  group_by: user                # (str) The grouping strategy ranging in ['user', 'none'].
+  order: RO                     # (str) The ordering strategy ranging in ['RO', 'TO'].
+  mode: full                 # (str) The evaluation mode ranging in ['full','unixxx','popxxx','labeled'].
+
+# Model
+embedding_size: 768
+num_heads: 12
+num_layers: 6
+use_kg_token_types: True
+sequence_postprocessor: Cumulative
+# topk: 10
+
+# KGGLM two-stage training settings
+train_stage: pretrain
+pre_model_path: 'saved/huggingface-distilgpt2-KGGLM-autism-pretrained.pth'
+pretrain_epochs: 10
+save_step: 2
+
+# Path Generation
+path_generation_args:
+  paths_per_user: 50
+  num_beams: 60
+  num_beam_groups: 10
+  diversity_penalty: 0.3

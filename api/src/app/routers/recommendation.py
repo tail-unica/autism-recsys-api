@@ -28,7 +28,7 @@ async def get_recommendation(
     """
 
     service.logger.info(f"RecommendationRequest from {request.user_id} with preferences: {request.preferences}")
-    service.logger.debug(f"RecommendationRequest:\n{pformat(request.model_dump())}")
+    # service.logger.debug(f"RecommendationRequest:\n{pformat(request.model_dump())}")
 
     recommender_response = await service.recommend(payload=request.model_dump())
 

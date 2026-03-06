@@ -8,6 +8,7 @@ Backend proxy per l'applicazione di raccomandazione POI, con autenticazione sicu
 - **Persistenza utenti**: Profilo utente, preferenze e luoghi preferiti salvati su MongoDB
 - **Tracciamento raccomandazioni**: Ogni richiesta di raccomandazione viene salvata con il relativo sessionId
 - **Feedback questionario**: Le risposte al questionario per ogni raccomandazione vengono salvate nel database
+- **Validazione studio utente**: Sessioni marcate e salvate quando viene fornito un codice studio valido
 - **Rate limiting**: Protezione contro abusi con rate limiting su tutte le API
 - **Proxy API**: Proxy trasparente verso l'API di raccomandazione
 
@@ -45,6 +46,9 @@ web/
 | POST | `/auth/login` | Login/registrazione con nickname |
 | POST | `/auth/verify` | Verifica validità token |
 | POST | `/auth/logout` | Logout |
+
+`POST /auth/login` accetta anche opzionalmente `studyCode` e `studySource` (`url` o `manual`).
+Se `studyCode` è valido rispetto a `USER_STUDY_SECRET`, la sessione viene inserita in MongoDB nella collezione delle sessioni validate per lo studio.
 
 ### Utente (`/user`) - Richiede autenticazione
 
@@ -160,6 +164,7 @@ PORT=3001                    # Porta del server
 MONGODB_URI=mongodb://...    # URI connessione MongoDB
 API_TARGET=http://api:8100   # URL API raccomandazioni
 JWT_SECRET=...               # Secret per firma JWT (minimo 64 char)
+USER_STUDY_SECRET=...        # Secret per validare codici studio
 JWT_EXPIRES_IN=7d            # Durata token
 CORS_ORIGIN=*                # Origini CORS consentite
 ```

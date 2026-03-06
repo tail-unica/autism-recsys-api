@@ -16,9 +16,18 @@ export default function App() {
   const [isNewUser, setIsNewUser] = useState(false);
   const [profileAnswers, setProfileAnswers] = useState<Record<string, number>>({});
   const [favoritePlaces, setFavoritePlaces] = useState<Place[]>([]);
+  const [studyCodeFromLink, setStudyCodeFromLink] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
   // Verifica lo stato di autenticazione all'avvio
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const studyCode = (params.get('study') || params.get('secret') || '').trim();
+    if (studyCode) {
+      setStudyCodeFromLink(studyCode);
+    }
+  }, []);
+
   useEffect(() => {
     const checkAuth = async () => {
       if (isAuthenticated()) {
@@ -150,7 +159,11 @@ export default function App() {
       />
 
       {currentStep === 'nickname' && (
-        <NicknameStep initialNickname={nickname} onComplete={handleNicknameComplete} />
+        <NicknameStep
+          initialNickname={nickname}
+          initialStudyCode={studyCodeFromLink}
+          onComplete={handleNicknameComplete}
+        />
       )}
       {currentStep === 'profile' && (
         <ProfileConfigStep

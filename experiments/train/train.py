@@ -8,16 +8,58 @@ from hopwise.model.path_language_modeling_recommender.pearlm import PEARLM
 from hopwise.trainer import Trainer
 from hopwise.utils import init_seed, init_logger
 from hopwise.quick_start.quick_start import run_hopwise, run
+from transformers.trainer_utils import get_last_checkpoint
+import glob
 import os
 import shutil
 from datetime import datetime
 
+
+def find_pretrained_hf_checkpoint(saved_dir: str) -> str:
+    """
+    Trova l'ultima directory checkpoint HuggingFace salvata dal pretrain KGGLM.
+    Hopwise salva in: saved/huggingface-distilgpt2-KGGLM-autism-pretrained-{N}.pth/checkpoint-{step}/
+    Restituisce il path al checkpoint più recente per epoch (N più alto).
+    """
+    pattern = os.path.join(saved_dir, "huggingface-*-pretrained-*.pth")
+    candidates = sorted(glob.glob(pattern))
+    if not candidates:
+        raise FileNotFoundError(f"Nessun checkpoint pretrain trovato in {saved_dir}")
+    # prende l'epoch più alta (ultimo nel sort lessicografico)
+    last_epoch_dir = candidates[-1]
+    ckpt = get_last_checkpoint(last_epoch_dir)
+    if ckpt is None:
+        raise FileNotFoundError(f"Nessun checkpoint HuggingFace trovato in {last_epoch_dir}")
+    return ckpt
+
 if __name__ == '__main__':
+
+    config_dict = {
+        'train_stage': 'pretrain',
+        'pretrain_epochs': 10,
+    }
+
     run_hopwise(
-        model='PEARLM',
+        model='KGGLM',
+        dataset='autism',
+        config_file_list=['kgglm.yaml'],
+        saved=True,
+        config_dict=config_dict
+    )
+
+    saved_dir = os.path.join(os.getcwd(), "saved")
+    pre_model_path = find_pretrained_hf_checkpoint(saved_dir)
+
+    config_dict = {
+        'train_stage': 'finetune',
+        'pre_model_path': pre_model_path,
+    }
+
+    run_hopwise(
+        model='KGGLM', # 'PEARLM' 'KGGLM'
         dataset='autism', # 'autism' 'ml-100k'
-        run='train',
-        config_file_list=['experiments.yaml'], # 'hopwise.yaml'
+        config_file_list=['kgglm.yaml'], # 'hopwise.yaml'
+        config_dict=config_dict,
         saved=True,
         checkpoint=None
     )
@@ -35,37 +77,3 @@ if __name__ == '__main__':
             src_path = os.path.join(src_dir, name)
             dst_path = os.path.join(dst_dir, name)
             shutil.move(src_path, dst_path)
-
-    """
-    config = Config(model='PEARLM', dataset='autism', config_file_list=['hopwise.yaml'])
-
-    # init random seed
-    init_seed(seed=123, reproducibility=True)
-
-    # logger initialization
-    init_logger(config)
-    logger = getLogger()
-
-    # write config info into log
-    logger.info(config)
-
-    # dataset creating and filtering
-    dataset = create_dataset(config)
-    logger.info(dataset)
-
-    # dataset splitting
-    train_data, valid_data, test_data = data_preparation(config, dataset)
-    
-    # model loading and initialization
-    model = PEARLM(config, train_data.dataset).to(config['device'])
-    logger.info(model)
-
-    # trainer loading and initialization
-    trainer = Trainer(config, model)
-
-    # model training
-    best_valid_score, best_valid_result = trainer.fit(train_data, valid_data)
-
-    # model evaluation
-    test_result = trainer.evaluate(test_data)
-    print(test_result)"""

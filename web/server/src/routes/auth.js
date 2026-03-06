@@ -1,9 +1,42 @@
 import { Router } from 'express';
 import crypto from 'crypto';
 import User from '../models/User.js';
-import { generateToken, hashNickname } from '../middleware/auth.js';
+import StudyValidatedSession from '../models/StudyValidatedSession.js';
+import { authenticateToken, generateToken, hashNickname, verifyToken as verifyJwtToken } from '../middleware/auth.js';
 
 const router = Router();
+
+const normalizeStudyCode = (code) => (typeof code === 'string' ? code.trim() : '');
+
+const safeEqual = (left, right) => {
+  const leftBuffer = Buffer.from(left);
+  const rightBuffer = Buffer.from(right);
+  if (leftBuffer.length !== rightBuffer.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(leftBuffer, rightBuffer);
+};
+
+const buildPublicStudyCode = (secret) => {
+  return crypto
+    .createHmac('sha256', secret)
+    .update('phase-user-study-link')
+    .digest('base64url')
+    .replace(/[-_]/g, '')
+    .slice(0, 20)
+    .toUpperCase();
+};
+
+const isValidStudyCode = (providedCode) => {
+  const studySecret = normalizeStudyCode(process.env.USER_STUDY_SECRET);
+  if (!studySecret || !providedCode) {
+    return false;
+  }
+
+  const expectedPublicCode = buildPublicStudyCode(studySecret);
+  return safeEqual(providedCode, studySecret) || safeEqual(providedCode, expectedPublicCode);
+};
 
 /**
  * POST /auth/login
@@ -13,7 +46,7 @@ const router = Router();
  */
 router.post('/login', async (req, res) => {
   try {
-    const { nickname } = req.body;
+    const { nickname, studyCode, studySource } = req.body;
 
     if (!nickname || typeof nickname !== 'string') {
       return res.status(400).json({ error: 'Nickname richiesto' });
@@ -45,8 +78,31 @@ router.post('/login', async (req, res) => {
       await user.save();
     }
 
+    const normalizedStudyCode = normalizeStudyCode(studyCode);
+    const hasProvidedStudyCode = normalizedStudyCode.length > 0;
+    const hasValidStudyCode = isValidStudyCode(normalizedStudyCode);
+
+    if (hasProvidedStudyCode && !hasValidStudyCode) {
+      return res.status(400).json({ error: 'Token di validazione non valido' });
+    }
+
+    const tokenId = crypto.randomUUID();
     // Genera token JWT
-    const token = generateToken(user._id.toString(), nicknameHash);
+    const token = generateToken(user._id.toString(), nicknameHash, tokenId);
+
+    if (hasValidStudyCode) {
+      const decodedToken = verifyJwtToken(token);
+      await StudyValidatedSession.create({
+        userId: user._id,
+        nicknameHash,
+        tokenId,
+        source: studySource === 'url' ? 'url' : 'manual',
+        studyCodeHash: hashNickname(normalizedStudyCode),
+        ipAddress: req.ip || '',
+        userAgent: req.get('user-agent') || '',
+        expiresAt: decodedToken?.exp ? new Date(decodedToken.exp * 1000) : undefined,
+      });
+    }
 
     res.json({
       token,
@@ -54,6 +110,7 @@ router.post('/login', async (req, res) => {
       hasProfile: !!(user.profile && Object.keys(user.profile).length > 0),
       profile: user.profile || null,
       favoritePlaces: user.favoritePlaces || [],
+      isStudyValidated: hasValidStudyCode,
     });
 
   } catch (error) {
@@ -75,9 +132,7 @@ router.post('/verify', async (req, res) => {
       return res.status(401).json({ valid: false });
     }
 
-    // Import verifyToken here to avoid circular dependency
-    const { verifyToken } = await import('../middleware/auth.js');
-    const decoded = verifyToken(token);
+    const decoded = verifyJwtToken(token);
 
     if (!decoded) {
       return res.status(401).json({ valid: false });
@@ -87,6 +142,13 @@ router.post('/verify', async (req, res) => {
     const user = await User.findById(decoded.userId);
     if (!user) {
       return res.status(401).json({ valid: false });
+    }
+
+    if (decoded.tokenId) {
+      await StudyValidatedSession.updateMany(
+        { tokenId: decoded.tokenId, revokedAt: null },
+        { $set: { lastSeenAt: new Date() } }
+      );
     }
 
     res.json({
@@ -104,9 +166,14 @@ router.post('/verify', async (req, res) => {
  * POST /auth/logout
  * Logout (lato client, invalida il token)
  */
-router.post('/logout', (req, res) => {
-  // Il logout è gestito lato client rimuovendo il token
-  // Qui potremmo aggiungere una blacklist di token se necessario
+router.post('/logout', authenticateToken, async (req, res) => {
+  if (req.user?.tokenId) {
+    await StudyValidatedSession.updateMany(
+      { tokenId: req.user.tokenId, revokedAt: null },
+      { $set: { revokedAt: new Date(), lastSeenAt: new Date() } }
+    );
+  }
+
   res.json({ success: true });
 });
 

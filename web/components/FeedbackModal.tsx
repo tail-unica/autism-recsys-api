@@ -5,6 +5,7 @@ import { Recommendation, SensoryFeatureKey } from '../lib/types';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { apiConfig } from '../resources/api_config';
 import { submitFeedback } from '../lib/backend';
+import { renderMarkdownBold } from '../lib/markdown';
 
 interface FeedbackModalProps {
   onClose: (partial: { liked: boolean | null; answers: Record<string, number>; comment: string }) => void;
@@ -185,7 +186,7 @@ export function FeedbackModal({ recommendation, sessionId, isCompleted, initialS
               )}
 
               <div className="p-4 bg-[var(--color-bg-secondary)] rounded-xl">
-                <p className="text-base leading-relaxed">{recommendation.explanation}</p>
+                <p className="text-base leading-relaxed">{renderMarkdownBold(recommendation.explanation)}</p>
               </div>
             </div>
           </div>

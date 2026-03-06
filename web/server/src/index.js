@@ -4,6 +4,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
+import crypto from 'crypto';
 
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/user.js';
@@ -12,6 +13,18 @@ import feedbackRoutes from './routes/feedback.js';
 import { authenticateToken } from './middleware/auth.js';
 
 dotenv.config();
+
+const normalizeStudyCode = (code) => (typeof code === 'string' ? code.trim() : '');
+
+const buildPublicStudyCode = (secret) => {
+  return crypto
+    .createHmac('sha256', secret)
+    .update('phase-user-study-link')
+    .digest('base64url')
+    .replace(/[-_]/g, '')
+    .slice(0, 20)
+    .toUpperCase();
+};
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -63,6 +76,12 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://root:password@mongo:27
 mongoose.connect(MONGODB_URI)
   .then(() => {
     console.log('✅ Connected to MongoDB');
+    const studySecret = normalizeStudyCode(process.env.USER_STUDY_SECRET);
+    if (studySecret) {
+      console.log(`🔑 Public study code: ${buildPublicStudyCode(studySecret)}`);
+    } else {
+      console.log('ℹ️ USER_STUDY_SECRET non configurata: codice studio pubblico non disponibile');
+    }
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Server running on port ${PORT}`);
     });

@@ -130,6 +130,7 @@ class RecommenderService:
         config["checkpoint_dir"] = os.path.dirname(self.cfg.model.hopwise_checkpoint_file)
         config["data_path"] = os.path.join(data_dir, self.cfg.data.dataset)
         config["load_col"]["item"] = ["poi_id", "name"]
+        config["train_stage"] = "pretrain"
         config._set_env_behavior()
 
         # ===== Initialize dataset and data splits =====
@@ -304,6 +305,7 @@ class RecommenderService:
                 preferences=preferences_ids,
                 previous_recommendations=previous_recommendations,
                 aversions=aversions,
+                better_readability=OmegaConf.select(self.cfg, "model.better_readability"),
             )
         elif user_id in self.dataset.field2id_token[self.dataset.uid_field]:
             # NOTE: not implemented yet
@@ -359,7 +361,8 @@ class RecommenderService:
             user_id, 
             better_explanations=True, 
             force_path_explanations=OmegaConf.select(self.cfg, "model.force_path_explanations"), 
-            force_paths=OmegaConf.select(self.cfg, "model.force_paths")
+            force_paths=OmegaConf.select(self.cfg, "model.force_paths"),
+            better_readability=OmegaConf.select(self.cfg, "model.better_readability")
         )
         if unpacked_sequences is None:
             return None

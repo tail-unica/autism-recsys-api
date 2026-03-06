@@ -9,6 +9,7 @@ export interface AuthResponse {
   hasProfile: boolean;
   profile: Record<string, number> | null;
   favoritePlaces: any[];
+  isStudyValidated?: boolean;
 }
 
 export interface VerifyResponse {
@@ -46,11 +47,15 @@ export const getAuthHeaders = (): HeadersInit => {
 };
 
 // Login con nickname
-export const login = async (nickname: string): Promise<AuthResponse> => {
+export const login = async (
+  nickname: string,
+  studyCode?: string,
+  studySource?: 'url' | 'manual'
+): Promise<AuthResponse> => {
   const response = await fetch(`${BACKEND_BASE}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ nickname }),
+    body: JSON.stringify({ nickname, studyCode, studySource }),
   });
 
   if (!response.ok) {

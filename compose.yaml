@@ -104,6 +104,7 @@ services:
       - MONGODB_URI=mongodb://root:${MONGODB_PASSWORD}@mongo:27017/autism?authSource=admin
       - API_TARGET=http://api:8100
       - JWT_SECRET=${JWT_SECRET}
+      - USER_STUDY_SECRET=${USER_STUDY_SECRET}
       - JWT_EXPIRES_IN=7d
       - CORS_ORIGIN=*
     depends_on:

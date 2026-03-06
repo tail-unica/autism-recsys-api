@@ -4,6 +4,7 @@ import { FeedbackModal } from './FeedbackModal';
 import { requestRecommendations, RecommendationResponse } from '../lib/backend';
 import { Place, Recommendation } from '../lib/types';
 import { apiConfig, buildAversions } from '../resources/api_config';
+import { renderMarkdownBold } from '../lib/markdown';
 
 interface RecommendationsStepProps {
   userId: string;
@@ -184,7 +185,7 @@ export function RecommendationsStep({
                           )}
                         </div>
                         <p className="mt-2 text-sm text-[var(--color-text-secondary)] line-clamp-2">
-                          ✨ {recommendation.explanation}
+                          ✨ {renderMarkdownBold(recommendation.explanation)}
                         </p>
                       </div>
                     </div>

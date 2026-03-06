@@ -57,7 +57,7 @@ async def search_places(
     **distance**: Optional maximum distance (in meters) from the user position
     **categories**: Optional list of category IDs to filter results
     """
-    service.logger.info(f"API search_places: SearchRequest({request})")
+    # service.logger.info(f"API search_places: SearchRequest({request})")
 
     search_results = await service.search_places(query=request.model_dump())
 
@@ -78,6 +78,6 @@ async def search_places(
     except (ValueError, TypeError):
         pretty = json.dumps(_sanitize_for_json(raw), indent=2, sort_keys=True, ensure_ascii=False)
 
-    service.logger.info("API search_places: response:\n%s", pretty)
+    # service.logger.info("API search_places: response:\n%s", pretty)
 
     return SearchResponse(**search_results)

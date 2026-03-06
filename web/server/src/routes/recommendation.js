@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import Recommendation from '../models/Recommendation.js';
+import StudyValidatedSession from '../models/StudyValidatedSession.js';
 import User from '../models/User.js';
 import { fetchRecommendations } from '../services/recommendationApi.js';
 
@@ -55,6 +56,30 @@ router.post('/request', async (req, res) => {
     });
 
     await recommendationRecord.save();
+
+    if (req.user?.tokenId) {
+      const validatedSession = await StudyValidatedSession.findOne({
+        tokenId: req.user.tokenId,
+        revokedAt: null,
+      }).sort({ loginAt: -1 });
+
+      if (validatedSession) {
+        await StudyValidatedSession.create({
+          userId: validatedSession.userId,
+          nicknameHash: validatedSession.nicknameHash,
+          tokenId: validatedSession.tokenId,
+          recommendationSessionId: recommendationRecord.sessionId,
+          source: validatedSession.source,
+          studyCodeHash: validatedSession.studyCodeHash,
+          ipAddress: validatedSession.ipAddress,
+          userAgent: validatedSession.userAgent,
+          loginAt: validatedSession.loginAt,
+          lastSeenAt: new Date(),
+          expiresAt: validatedSession.expiresAt,
+          revokedAt: validatedSession.revokedAt,
+        });
+      }
+    }
 
     res.json({
       sessionId: recommendationRecord.sessionId,
