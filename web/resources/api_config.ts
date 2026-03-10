@@ -28,10 +28,7 @@ export const apiConfig = {
     crowd_comfort: 'crowd',
     light_sensitivity: 'bright_light',
   },
-  fallback: {
-    placeholderImage:
-      'https://upload.wikimedia.org/wikipedia/commons/thumb/d/db/20200325_Bellis_perennis_02.jpg/640px-20200325_Bellis_perennis_02.jpg',
-  },
+
 };
 
 /**

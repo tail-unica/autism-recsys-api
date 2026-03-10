@@ -1,9 +1,8 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { questions as surveyQuestions } from '../resources/survey';
 import { Recommendation, SensoryFeatureKey } from '../lib/types';
-import { ImageWithFallback } from './figma/ImageWithFallback';
-import { apiConfig } from '../resources/api_config';
+
 import { submitFeedback } from '../lib/backend';
 import { renderMarkdownBold } from '../lib/markdown';
 
@@ -21,7 +20,7 @@ interface FeedbackModalProps {
 const SENSORY_LABELS: Record<SensoryFeatureKey, string> = {
   noise: 'Rumore',
   crowd: 'Affollamento',
-  light: 'Intensità Luce',
+  light: 'Intensità di Luce',
   space: 'Spazio',
   odor: 'Odori',
 };
@@ -32,6 +31,14 @@ const SENSORY_EMOJI: Record<SensoryFeatureKey, string> = {
   light: '💡',
   space: '📏',
   odor: '👃',
+};
+
+const getSensoryLevel = (value: number): string => {
+  if (value <= 1) return 'molto basso';
+  if (value <= 2) return 'basso';
+  if (value <= 3) return 'moderato';
+  if (value <= 4) return 'alto';
+  return 'molto alto';
 };
 
 export function FeedbackModal({ recommendation, sessionId, isCompleted, initialState, onClose, onSubmit, onNext, hasNext }: FeedbackModalProps) {
@@ -57,10 +64,7 @@ export function FeedbackModal({ recommendation, sessionId, isCompleted, initialS
 
   const allAnswered = liked !== null && Object.keys(answers).length === totalQuestions;
 
-  const imageSrc = useMemo(
-    () => recommendation.image || apiConfig.fallback.placeholderImage,
-    [recommendation.image]
-  );
+
 
   // Salva il feedback sul backend
   const saveFeedback = async () => {
@@ -128,13 +132,6 @@ export function FeedbackModal({ recommendation, sessionId, isCompleted, initialS
         <div className="space-y-8">
           {/* Place Details */}
           <div className="bg-[var(--color-bg-primary)] rounded-2xl overflow-hidden">
-            <div className="relative h-64 bg-[var(--color-bg-accent)]">
-              <ImageWithFallback
-                src={imageSrc}
-                alt={recommendation.name}
-                className="w-full h-full object-cover"
-              />
-            </div>
             <div className="p-6">
               <div className="flex items-start justify-between gap-4 mb-3">
                 <div className="min-w-0">
@@ -169,7 +166,7 @@ export function FeedbackModal({ recommendation, sessionId, isCompleted, initialS
 
                         <div className="flex-1 min-w-0">
                           <div className="flex justify-between text-sm mb-1">
-                            <span className="truncate">{SENSORY_LABELS[key as SensoryFeatureKey] || key}</span>
+                            <span className="truncate">{SENSORY_LABELS[key as SensoryFeatureKey] || key} ({getSensoryLevel(value as number)})</span>
                             <span>{value}/5</span>
                           </div>
                           <div className="h-2 bg-white rounded-full overflow-hidden">

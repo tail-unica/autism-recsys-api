@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Loader2, CheckCircle2, ClipboardList } from 'lucide-react';
+import { Loader2, ClipboardList } from 'lucide-react';
 import { FeedbackModal } from './FeedbackModal';
+import { PlaceCard } from './PlaceCard';
 import { requestRecommendations, RecommendationResponse } from '../lib/backend';
 import { Place, Recommendation } from '../lib/types';
-import { apiConfig, buildAversions } from '../resources/api_config';
-import { renderMarkdownBold } from '../lib/markdown';
+import { buildAversions } from '../resources/api_config';
 
 interface RecommendationsStepProps {
   userId: string;
@@ -133,65 +133,15 @@ export function RecommendationsStep({
             </div>
 
             <div className="space-y-4 mb-8">
-              {recommendations.map((recommendation, index) => {
-                const imageSrc = recommendation.image || apiConfig.fallback.placeholderImage;
-                const isCompleted = completedFeedbacks.has(recommendation.id);
-                return (
-                  <button
-                    key={recommendation.id}
-                    type="button"
-                    onClick={() => setActiveFeedbackIndex(index)}
-                    className={`w-full text-left transition-colors rounded-2xl p-4 md:p-5 shadow-sm ${
-                      isCompleted
-                        ? 'bg-[var(--color-bg-accent)] border-2 border-[var(--color-primary)]'
-                        : 'bg-[var(--color-bg-secondary)] hover:bg-[var(--color-bg-accent)]'
-                    }`}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-[var(--color-bg-accent)] relative">
-                        <img
-                          src={imageSrc}
-                          alt={recommendation.name}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                        />
-                        {isCompleted && (
-                          <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
-                            <CheckCircle2 size={28} className="text-white" />
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="min-w-0">
-                            <h3 className="mb-1 truncate flex items-center gap-2">
-                              {recommendation.name}
-                              {isCompleted && (
-                                <span className="inline-flex items-center gap-1 text-xs font-medium text-[var(--color-primary)]">
-                                  <CheckCircle2 size={14} /> Completato
-                                </span>
-                              )}
-                            </h3>
-                            {recommendation.address && (
-                              <p className="text-sm text-[var(--color-text-secondary)] truncate">
-                                {recommendation.address}
-                              </p>
-                            )}
-                          </div>
-                          {recommendation.category && (
-                            <span className="inline-block px-3 py-1 bg-[var(--color-bg-accent)] rounded-full text-sm whitespace-nowrap">
-                              {recommendation.category.replace(/_/g, ' ')}
-                            </span>
-                          )}
-                        </div>
-                        <p className="mt-2 text-sm text-[var(--color-text-secondary)] line-clamp-2">
-                          ✨ {renderMarkdownBold(recommendation.explanation)}
-                        </p>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
+              {recommendations.map((recommendation, index) => (
+                <PlaceCard
+                  key={recommendation.id}
+                  place={recommendation}
+                  explanation={recommendation.explanation}
+                  isCompleted={completedFeedbacks.has(recommendation.id)}
+                  onClick={() => setActiveFeedbackIndex(index)}
+                />
+              ))}
             </div>
           </>
         )}

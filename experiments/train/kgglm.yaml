@@ -38,6 +38,7 @@ metapaths: [
     [['poi_id', 'HAS_SENSORY_FEATURE', 'entity_id'], ['entity_id', 'HAS_SENSORY_FEATURE_r', 'poi_id']],
     [['poi_id', '[UI-Relation]', 'user_id'], ['user_id', '[UI-Relation]', 'poi_id']],
     [['poi_id', 'HAS_PLACE_COMPATIBILITY_r', 'user_id'], ['user_id', 'HAS_PLACE_COMPATIBILITY', 'poi_id']],
+    [['entity_id', 'HAS_SENSORY_COMPATIBILITY_r', 'user_id'], ['user_id', '[UI-Relation]', 'poi_id']],
     [['poi_id', 'HAS_SENSORY_FEATURE', 'entity_id'], ['entity_id', 'HAS_SENSORY_COMPATIBILITY_r', 'user_id'], ['user_id', '[UI-Relation]', 'poi_id']]
     # [['poi_id', 'BELONGS_TO_CATEGORY', 'entity_id'], ['entity_id', 'HAS_PREFERENCE_r', 'user_id'], ['user_id', 'HAS_PLACE_COMPATIBILITY', 'poi_id']],
     # [['poi_id', 'BELONGS_TO_CATEGORY', 'entity_id'], ['entity_id', 'HAS_PREFERENCE_r', 'user_id'], ['user_id', '[UI-Relation]', 'poi_id']]
@@ -45,7 +46,7 @@ metapaths: [
 ]
 
 # Training
-epochs: 60 # 50
+epochs: 70 # 50
 learning_rate: 2e-4
 weight_decay: 0.01
 warmup_steps: 250 # (int) Number of warmup steps for learning rate scheduler.
@@ -78,7 +79,7 @@ sequence_postprocessor: Cumulative
 # KGGLM two-stage training settings
 train_stage: pretrain
 pre_model_path: 'saved/huggingface-distilgpt2-KGGLM-autism-pretrained.pth'
-pretrain_epochs: 10
+pretrain_epochs: 30
 save_step: 2
 
 # Path Generation

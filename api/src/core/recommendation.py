@@ -1,4 +1,5 @@
 from collections.abc import Iterable
+import math
 from numpy import arange
 
 from hopwise.utils import PathLanguageModelingTokenType
@@ -286,7 +287,6 @@ def prepare_recommender_and_raw_inputs_zero_shot(  # noqa: PLR0913
     preferences=None,
     previous_recommendations=[],
     aversions=None,
-    better_readability=True,
 ):
     """
     Docstring per prepare_recommender_and_raw_inputs_zero_shot
@@ -298,7 +298,6 @@ def prepare_recommender_and_raw_inputs_zero_shot(  # noqa: PLR0913
     :param preferences: List of items encoded as dataset ids
     :param previous_recommendations: Descrizione
     :param aversions: Descrizione
-    :param better_readability: Flag to enable better readability formatting
     """
     if not preferences:
         logger.error("No preferences provided for zero-shot recommendation.")
@@ -408,6 +407,14 @@ def unpack_recommendation_sequences_tuples(sequences, dataset, user_id, better_e
     logger.debug(f"{'Unpacked recommendation IDs'.rjust(27)}: {str(recommendation_ids)}")
     logger.debug(f"{'Unpacked scores'.rjust(27)}: {str(scores)}")
     logger.debug(f"{'Unpacked explanations'.rjust(27)}: {str(raw_explanations)}")
+
+    # Filter recommendations with +/-inf score before further processing.
+    if any(math.isinf(float(score)) for score in scores):
+        logger.warning("Some recommendations have +/-inf scores. These will be filtered out.")
+        valid_indices = [i for i, score in enumerate(scores) if not math.isinf(float(score))]
+        recommendation_ids = [recommendation_ids[i] for i in valid_indices]
+        scores = [scores[i] for i in valid_indices]
+        raw_explanations = [raw_explanations[i] for i in valid_indices]
 
     # Convert raw tokens to human-readable tokens (skip BOS at index 0)
     explanation_pairs = []

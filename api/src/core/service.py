@@ -1,5 +1,6 @@
 from __future__ import annotations
 import asyncio
+import math
 from typing import Any, Dict, Optional
 from pprint import pformat
 from neo4j import GraphDatabase
@@ -112,6 +113,18 @@ class RecommenderService:
             os.getenv("NEO4J_URI"),
             auth=(os.getenv("NEO4J_USER"), os.getenv("NEO4J_PASSWORD")),
         )
+
+        # ===== Create fulltext index for semantic search =====
+        logger.debug("Ensuring fulltext index exists...")
+        with self._neo4j_driver.session() as session:
+            try:
+                session.run(
+                    "CREATE FULLTEXT INDEX placeNameFulltext IF NOT EXISTS "
+                    "FOR (p:Place) ON EACH [p.name]"
+                )
+                logger.debug("Fulltext index 'placeNameFulltext' ensured.")
+            except Exception as e:
+                logger.warning(f"Could not create fulltext index: {e}")
 
         # ===== Load and prepare dataset =====
         logger.debug("Loading dataset...")
@@ -304,8 +317,7 @@ class RecommenderService:
                 self.zero_shot_constrained_logits_processors_list,
                 preferences=preferences_ids,
                 previous_recommendations=previous_recommendations,
-                aversions=aversions,
-                better_readability=OmegaConf.select(self.cfg, "model.better_readability"),
+                aversions=aversions
             )
         elif user_id in self.dataset.field2id_token[self.dataset.uid_field]:
             # NOTE: not implemented yet
@@ -368,6 +380,9 @@ class RecommenderService:
             return None
 
         scores, recommendations, explanations = unpacked_sequences
+
+        # ===== Sanitize scores (replace inf/nan with 0.0 for JSON compliance) =====
+        scores = [0.0 if (isinstance(s, float) and (math.isinf(s) or math.isnan(s))) else s for s in scores]
 
         # ===== Fetch place information =====
         try:

@@ -58,7 +58,6 @@ const normalizeRecommendationFromBackend = (item: any, index: number): Recommend
   name: item.name ?? item.place ?? `Luogo ${index + 1}`,
   address: item.address ?? '',
   category: item.category ?? undefined,
-  image: item.image ?? undefined,
   description: item.description ?? undefined,
   sensory_features: normalizeSensoryFeatures(item.sensory_features),
   coordinates: toCoordinateTuple(item.coordinates),

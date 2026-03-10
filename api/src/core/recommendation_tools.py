@@ -438,22 +438,21 @@ class ZeroShotCumulativeSequenceScorePostProcessor(CumulativeSequenceScorePostPr
         """
         Creates a mask indicating which sequences match the configured tokenized_sequence_paths.
         
-        Extracts relation tokens from each sequence and compares them against the tokenized_sequence_paths.
-        Only sequences that match one of the paths are marked as valid (True).
+        Extracts relation tokens (in order) from each sequence and checks that they exactly match
+        at least one of the forced paths defined in tokenized_sequence_paths.
         
         :param sequences: Tensor of shape (num_sequences, sequence_length) containing token IDs
-        :return: Boolean tensor of shape (num_sequences,) where True means the sequence matches a tokenized_sequence_path
+        :return: Boolean tensor of shape (num_sequences,) where True means the sequence's relations match a forced path
         """
         mask = torch.zeros(sequences.shape[0], dtype=torch.bool, device=sequences.device)
+        relation_prefix = PathLanguageModelingTokenType.RELATION.token
         
         for idx, sequence in enumerate(sequences):
-            # Extract relation tokens from the sequence (e.g., 'R1', 'R2', ...)
             relation_tokens = [
                 token for token in self.tokenizer.decode(sequence).split(" ")
-                if token.startswith(PathLanguageModelingTokenType.RELATION.token)
+                if token.startswith(relation_prefix)
             ]
             
-            # Check if this sequence matches any tokenized_sequence_path
             for path in self.tokenized_sequence_paths:
                 if relation_tokens == path:
                     mask[idx] = True
@@ -561,3 +560,28 @@ class ZeroShotCumulativeSequenceScorePostProcessor(CumulativeSequenceScorePostPr
             return
 
         return recommended_item, seq
+
+
+class ZeroShotHeuristicLogicProcessor(ConstrainedLogitsProcessorWordLevel):
+
+    def __init__(
+        self,
+        tokenized_ckg,
+        tokenized_used_ids,
+        max_sequence_length,
+        tokenizer,
+        mask_cache_size=3 * 10**4,
+        pos_candidates_cache_size=1 * 10**5,
+        task=KnowledgeEvaluationType.REC,
+        **kwargs,
+    ):
+        super().__init__(
+            tokenized_ckg,
+            tokenized_used_ids,
+            max_sequence_length,
+            tokenizer,
+            mask_cache_size=mask_cache_size,
+            pos_candidates_cache_size=pos_candidates_cache_size,
+            task=task,
+            **kwargs,
+        )

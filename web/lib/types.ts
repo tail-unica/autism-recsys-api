@@ -7,7 +7,6 @@ export interface Place {
   name: string;
   address?: string;
   category?: string;
-  image?: string;
   description?: string;
   coordinates?: [number, number];
   sensory_features?: SensoryFeatures;

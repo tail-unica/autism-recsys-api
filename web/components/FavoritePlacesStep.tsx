@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { Search, X, Loader2 } from 'lucide-react';
 import { searchPlaces, availableCategories, categoryDisplayName } from '../lib/api';
 import { updateFavoritePlaces } from '../lib/backend';
-import { apiConfig } from '../resources/api_config';
 import { Place } from '../lib/types';
 
 interface FavoritePlacesStepProps {
@@ -76,7 +75,7 @@ export function FavoritePlacesStep({ initialPlaces = [], onComplete }: FavoriteP
       <div className="max-w-5xl mx-auto">
         <div className="bg-[var(--color-bg-secondary)] rounded-3xl shadow-sm p-8 md:p-12">
           <h1 className="mb-2">Luoghi che ti piacciono</h1>
-          <p className="mb-8">Seleziona almeno un luogo che hai visitato e ti è piaciuto</p>
+          <p className="mb-8">Seleziona almeno un luogo che hai visitato e ti è piaciuto, usando le categorie in arancione oppure la barra di ricerca.</p>
 
           {/* Search Bar */}
           <div className="mb-6">
@@ -140,7 +139,6 @@ export function FavoritePlacesStep({ initialPlaces = [], onComplete }: FavoriteP
             ) : (
               places.map((place) => {
                 const isSelected = selectedPlaces.find((p) => p.id === place.id);
-                const imageSrc = place.image || apiConfig.fallback.placeholderImage;
                 return (
                   <button
                     key={place.id}
@@ -151,31 +149,21 @@ export function FavoritePlacesStep({ initialPlaces = [], onComplete }: FavoriteP
                         : 'border-[var(--color-border)] bg-white hover:border-[var(--color-primary)]'
                     }`}
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="w-24 h-24 rounded-xl overflow-hidden flex-shrink-0 bg-[var(--color-bg-accent)]">
-                        <img
-                          src={imageSrc}
-                          alt={place.name}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0 space-y-2">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="min-w-0">
-                            <h3 className="mb-1 truncate">{place.name}</h3>
-                            <p className="text-sm text-[var(--color-text-secondary)] truncate">{place.address}</p>
-                          </div>
-                          {place.category && (
-                            <span className="inline-flex px-3 py-1 bg-white rounded-full text-sm whitespace-nowrap">
-                              {categoryDisplayName(place.category)}
-                            </span>
-                          )}
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                          <h3 className="mb-1 truncate">{place.name}</h3>
+                          <p className="text-sm text-[var(--color-text-secondary)] truncate">{place.address}</p>
                         </div>
-                        {place.description && (
-                          <p className="text-sm text-[var(--color-text-secondary)] line-clamp-2">{place.description}</p>
+                        {place.category && (
+                          <span className="inline-flex px-3 py-1 bg-white rounded-full text-sm whitespace-nowrap">
+                            {categoryDisplayName(place.category)}
+                          </span>
                         )}
                       </div>
+                      {place.description && (
+                        <p className="text-sm text-[var(--color-text-secondary)] line-clamp-2">{place.description}</p>
+                      )}
                     </div>
                   </button>
                 );
